@@ -1,17 +1,9 @@
-import React, { createContext, useContext, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { apiFetch } from '../api/client'
 import type { LoginResponse, Me, StaffRole } from '../api/types'
-
-type AuthState = {
-  token: string | null
-  me: Me | null
-  login: (email: string, password: string) => Promise<void>
-  logout: () => void
-  refreshMe: () => Promise<void>
-}
-
-const AuthCtx = createContext<AuthState | null>(null)
+import { AuthCtx, type AuthState } from './authContext'
+import { useAuth } from './useAuth'
 
 const TOKEN_KEY = 'zenail.token'
 const ME_KEY = 'zenail.me'
@@ -23,11 +15,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return raw ? (JSON.parse(raw) as Me) : null
   })
 
-  async function refreshMe() {
-    return refreshMeWithToken(token)
-  }
-
-  async function refreshMeWithToken(nextToken: string | null) {
+  const refreshMeWithToken = useCallback(async (nextToken: string | null) => {
     if (!nextToken) {
       setMe(null)
       localStorage.removeItem(ME_KEY)
@@ -36,9 +24,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const next = await apiFetch<Me>('/api/me', { token: nextToken })
     setMe(next)
     localStorage.setItem(ME_KEY, JSON.stringify(next))
-  }
+  }, [])
 
-  async function login(email: string, password: string) {
+  const refreshMe = useCallback(async () => refreshMeWithToken(token), [refreshMeWithToken, token])
+
+  const login = useCallback(
+    async (email: string, password: string) => {
     const resp = await apiFetch<LoginResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
@@ -46,27 +37,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(resp.access_token)
     localStorage.setItem(TOKEN_KEY, resp.access_token)
     await refreshMeWithToken(resp.access_token)
-  }
+    },
+    [refreshMeWithToken],
+  )
 
-  function logout() {
+  const logout = useCallback(() => {
     setToken(null)
     setMe(null)
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(ME_KEY)
-  }
+  }, [])
 
   const value = useMemo<AuthState>(
     () => ({ token, me, login, logout, refreshMe }),
-    [token, me],
+    [token, me, login, logout, refreshMe],
   )
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthCtx)
-  if (!ctx) throw new Error('AuthProvider missing')
-  return ctx
 }
 
 export function RequireStaff({ children }: { children: React.ReactNode }) {

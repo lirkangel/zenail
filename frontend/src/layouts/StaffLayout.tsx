@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { useAuth } from '../state/auth'
-import { useT } from '../state/i18n'
+import { useAuth } from '../state/useAuth'
+import { useT } from '../state/useT'
 
 function NavLink({ to, label }: { to: string; label: string }) {
   const loc = useLocation()

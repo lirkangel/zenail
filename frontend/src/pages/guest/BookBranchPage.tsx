@@ -4,7 +4,7 @@ import { apiFetch } from '../../api/client'
 import type { Appointment, Branch } from '../../api/types'
 import { Card } from '../../components/Card'
 import { Page } from '../../components/Page'
-import { appointmentStatusLabel, useT } from '../../state/i18n'
+import { appointmentStatusLabel, useT } from '../../state/useT'
 import { getLastBooking } from '../../state/booking'
 
 export function BookBranchPage() {
@@ -50,7 +50,7 @@ export function BookBranchPage() {
       ) : null}
       <div className="space-y-5">
         {(q.data ?? []).map((b) => (
-          <Link key={b.id} to={`/book/master?branch=${b.id}`}>
+          <Link key={b.id} to={`/book/master?branch=${b.id}`} className="block">
             <Card className="p-6 transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-studio">
               <div className="text-sm font-semibold text-rose-950">{b.name}</div>
               <div className="mt-1 text-xs text-rose-900/70">{b.address ?? t('common.emDash')}</div>

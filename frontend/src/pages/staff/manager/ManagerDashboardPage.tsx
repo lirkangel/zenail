@@ -5,8 +5,8 @@ import { apiFetch } from '../../../api/client'
 import type { Appointment } from '../../../api/types'
 import { Card } from '../../../components/Card'
 import { Page } from '../../../components/Page'
-import { useAuth } from '../../../state/auth'
-import { appointmentStatusLabel, useT } from '../../../state/i18n'
+import { useAuth } from '../../../state/useAuth'
+import { appointmentStatusLabel, useT } from '../../../state/useT'
 
 export function ManagerDashboardPage() {
   const t = useT()

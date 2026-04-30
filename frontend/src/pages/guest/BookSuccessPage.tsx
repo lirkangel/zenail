@@ -4,7 +4,7 @@ import { apiFetch } from '../../api/client'
 import type { Appointment } from '../../api/types'
 import { Card } from '../../components/Card'
 import { Page } from '../../components/Page'
-import { appointmentStatusLabel, useT } from '../../state/i18n'
+import { appointmentStatusLabel, useT } from '../../state/useT'
 import { getLastBooking } from '../../state/booking'
 
 export function BookSuccessPage() {

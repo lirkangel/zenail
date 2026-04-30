@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '../../state/auth'
+import { useAuth } from '../../state/useAuth'
 
 export function StaffHomeRedirect() {
   const { me } = useAuth()

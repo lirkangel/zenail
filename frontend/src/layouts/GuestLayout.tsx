@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useT } from '../state/i18n'
+import { useT } from '../state/useT'
 
 export function GuestLayout() {
   const t = useT()

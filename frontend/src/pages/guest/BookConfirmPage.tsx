@@ -6,7 +6,7 @@ import { Card } from '../../components/Card'
 import { Input } from '../../components/Input'
 import { Page } from '../../components/Page'
 import type { Appointment } from '../../api/types'
-import { useT } from '../../state/i18n'
+import { useT } from '../../state/useT'
 import { saveLastBooking } from '../../state/booking'
 
 type FormValues = { client_name: string; client_phone: string }

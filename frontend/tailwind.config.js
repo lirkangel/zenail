@@ -4,6 +4,11 @@ export default {
   theme: {
     extend: {
       colors: {
+        'studio-cream': '#fff7f9',
+        'studio-blush': '#ffe4ec',
+        'studio-rose': '#fb7185',
+        'studio-plum': '#831843',
+        'studio-gold': '#f59e0b',
         studio: {
           cream: '#fff7f9',
           blush: '#ffe4ec',

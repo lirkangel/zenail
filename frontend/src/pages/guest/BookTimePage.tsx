@@ -6,7 +6,7 @@ import { apiFetch } from '../../api/client'
 import type { Availability } from '../../api/types'
 import { Card } from '../../components/Card'
 import { Page } from '../../components/Page'
-import { useT } from '../../state/i18n'
+import { useT } from '../../state/useT'
 
 export function BookTimePage() {
   const t = useT()

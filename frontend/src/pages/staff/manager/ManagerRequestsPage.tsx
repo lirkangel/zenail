@@ -3,8 +3,8 @@ import { apiFetch } from '../../../api/client'
 import { Button } from '../../../components/Button'
 import { Card } from '../../../components/Card'
 import { Page } from '../../../components/Page'
-import { useAuth } from '../../../state/auth'
-import { useT } from '../../../state/i18n'
+import { useAuth } from '../../../state/useAuth'
+import { useT } from '../../../state/useT'
 
 type ReqRow = {
   id: number

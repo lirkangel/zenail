@@ -6,7 +6,7 @@ import type { Procedure } from '../../api/types'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Page } from '../../components/Page'
-import { useT } from '../../state/i18n'
+import { useT } from '../../state/useT'
 
 export function BookProcedurePage() {
   const t = useT()

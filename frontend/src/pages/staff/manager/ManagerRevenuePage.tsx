@@ -4,8 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
 import { Card } from '../../../components/Card'
 import { Page } from '../../../components/Page'
-import { useAuth } from '../../../state/auth'
-import { useT } from '../../../state/i18n'
+import { useAuth } from '../../../state/useAuth'
+import { useT } from '../../../state/useT'
 
 type Revenue = { from_date: string; to_date: string; total: string }
 
