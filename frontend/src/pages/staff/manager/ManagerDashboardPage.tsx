@@ -79,6 +79,9 @@ export function ManagerDashboardPage() {
             </div>
             <div className="mt-1 text-xs text-slate-600">{a.client_phone}</div>
             <div className="mt-1 text-xs text-slate-600">
+              Master: {a.master_name ?? `#${a.master_id}`}
+            </div>
+            <div className="mt-1 text-xs text-slate-600">
               {(a.procedures ?? []).map((p) => p.name).join(', ') || `Procedure #${a.procedure_id}`}
             </div>
             <div className="mt-1 flex items-center justify-between text-xs text-slate-600">

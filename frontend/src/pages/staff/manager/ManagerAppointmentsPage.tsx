@@ -2,7 +2,7 @@ import { addDays, format, startOfDay } from 'date-fns'
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
-import type { Appointment } from '../../../api/types'
+import type { Appointment, Master } from '../../../api/types'
 import { Button } from '../../../components/Button'
 import { Card } from '../../../components/Card'
 import { Input } from '../../../components/Input'
@@ -21,6 +21,10 @@ export function ManagerAppointmentsPage() {
       apiFetch<Appointment[]>(`/api/manager/appointments?date=${dayStr}`, {
         token: token ?? undefined,
       }),
+  })
+  const mastersQ = useQuery({
+    queryKey: ['managerMasters'],
+    queryFn: () => apiFetch<Master[]>('/api/manager/masters', { token: token ?? undefined }),
   })
 
   const patch = useMutation({
@@ -70,10 +74,11 @@ export function ManagerAppointmentsPage() {
           <AppointmentRow
             key={a.id}
             appt={a}
+            masters={mastersQ.data ?? []}
             pending={patch.isPending}
             onCancel={() => patch.mutate({ id: a.id, body: { status: 'canceled' } })}
-            onReschedule={(start_time) =>
-              patch.mutate({ id: a.id, body: { start_time } })
+            onSave={(body) =>
+              patch.mutate({ id: a.id, body })
             }
           />
         ))}
@@ -84,16 +89,19 @@ export function ManagerAppointmentsPage() {
 
 function AppointmentRow({
   appt,
+  masters,
   pending,
   onCancel,
-  onReschedule,
+  onSave,
 }: {
   appt: Appointment
+  masters: Master[]
   pending: boolean
   onCancel: () => void
-  onReschedule: (start_time: string) => void
+  onSave: (body: { start_time: string; master_id: number }) => void
 }) {
-  const [value, setValue] = useState(appt.start_time)
+  const [startValue, setStartValue] = useState(toDateTimeLocal(appt.start_time))
+  const [masterId, setMasterId] = useState(appt.master_id.toString())
   return (
     <Card>
       <div className="flex items-baseline justify-between gap-3">
@@ -106,6 +114,9 @@ function AppointmentRow({
         </div>
       </div>
       <div className="mt-1 text-xs text-slate-600">{appt.client_phone}</div>
+      <div className="mt-1 text-xs text-slate-600">
+        Master: {appt.master_name ?? `#${appt.master_id}`}
+      </div>
       <div className="mt-1 text-xs text-slate-600">
         {(appt.procedures ?? []).map((p) => p.name).join(', ') ||
           `Procedure #${appt.procedure_id}`}
@@ -130,18 +141,43 @@ function AppointmentRow({
       <div className="mt-3 space-y-2">
         <div>
           <label className="mb-1 block text-[11px] font-medium text-slate-700">
-            Reschedule (ISO with timezone)
+            New time
           </label>
-          <Input value={value} onChange={(e) => setValue(e.target.value)} />
+          <Input
+            type="datetime-local"
+            value={startValue}
+            onChange={(e) => setStartValue(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[11px] font-medium text-slate-700">
+            Assigned master
+          </label>
+          <select
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/20"
+            value={masterId}
+            onChange={(e) => setMasterId(e.target.value)}
+          >
+            {masters.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.full_name}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="flex gap-2">
           <Button
             className="flex-1"
             disabled={pending}
             type="button"
-            onClick={() => onReschedule(value)}
+            onClick={() =>
+              onSave({
+                start_time: new Date(startValue).toISOString(),
+                master_id: Number(masterId),
+              })
+            }
           >
-            Reschedule
+            Save changes
           </Button>
           <Button
             variant="secondary"
@@ -156,4 +192,10 @@ function AppointmentRow({
       </div>
     </Card>
   )
+}
+
+function toDateTimeLocal(value: string) {
+  const date = new Date(value)
+  const offsetMs = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16)
 }

@@ -41,6 +41,7 @@ export type Appointment = {
   id: number
   branch_id: number
   master_id: number
+  master_name?: string | null
   procedure_id: number
   procedure_ids: number[]
   procedures: AppointmentProcedure[]

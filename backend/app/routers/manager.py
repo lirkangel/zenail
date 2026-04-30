@@ -14,6 +14,7 @@ from app.models.enums import (
     RescheduleRequestStatus,
     StaffRole,
 )
+from app.models.master_procedure import MasterProcedure
 from app.models.procedure import Procedure
 from app.models.reschedule_request import RescheduleRequest
 from app.models.staff import Staff
@@ -79,36 +80,56 @@ def update_appointment(
         else:
             appt.status = payload.status
 
-    if payload.start_time is not None:
-        if payload.start_time.tzinfo is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="start_time must include timezone")
+    target_master_id = payload.master_id if payload.master_id is not None else appt.master_id
+    target_start = payload.start_time if payload.start_time is not None else appt.start_time
+    duration = appt.end_time - appt.start_time
+    target_end = target_start + duration
 
-        proc = db.get(Procedure, appt.procedure_id)
-        if not proc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Procedure not found")
-        new_start = payload.start_time
-        new_end = new_start + timedelta(minutes=proc.duration_minutes)
+    if payload.master_id is not None:
+        target_master = db.get(Staff, payload.master_id)
+        if (
+            not target_master
+            or target_master.role != StaffRole.master
+            or not target_master.is_active
+            or target_master.branch_id != branch_id
+        ):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Master not found")
+
+        procedure_ids = [p.procedure_id for p in appt.procedures] or [appt.procedure_id]
+        available_count = db.scalar(
+            select(func.count(MasterProcedure.procedure_id)).where(
+                MasterProcedure.master_id == payload.master_id,
+                MasterProcedure.procedure_id.in_(procedure_ids),
+            )
+        )
+        if available_count != len(set(procedure_ids)):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Master cannot perform all procedures")
+
+    if payload.start_time is not None or payload.master_id is not None:
+        if payload.start_time is not None and target_start.tzinfo is None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="start_time must include timezone")
 
         branch = db.get(Branch, appt.branch_id)
         if not branch:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
-        if new_start.time() < branch.open_time or new_end.time() > branch.close_time:
+        if target_start.time() < branch.open_time or target_end.time() > branch.close_time:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Outside branch hours")
 
         conflict = db.scalar(
             select(Appointment).where(
-                Appointment.master_id == appt.master_id,
+                Appointment.master_id == target_master_id,
                 Appointment.id != appt.id,
                 Appointment.status != AppointmentStatus.canceled,
-                Appointment.start_time < new_end,
-                Appointment.end_time > new_start,
+                Appointment.start_time < target_end,
+                Appointment.end_time > target_start,
             )
         )
         if conflict:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Time slot not available")
 
-        appt.start_time = new_start
-        appt.end_time = new_end
+        appt.master_id = target_master_id
+        appt.start_time = target_start
+        appt.end_time = target_end
 
     db.commit()
     db.refresh(appt)

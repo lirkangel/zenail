@@ -42,10 +42,10 @@ export function BookBranchPage() {
       {q.isError ? (
         <div className="text-sm text-rose-700">Failed to load branches.</div>
       ) : null}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {(q.data ?? []).map((b) => (
           <Link key={b.id} to={`/book/master?branch=${b.id}`}>
-            <Card className="hover:border-slate-300">
+            <Card className="p-5 hover:border-slate-300">
               <div className="text-sm font-semibold">{b.name}</div>
               <div className="mt-1 text-xs text-slate-600">{b.address ?? '—'}</div>
             </Card>

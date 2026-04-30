@@ -21,6 +21,7 @@ class ManagerAppointmentOut(BaseModel):
 
 class AppointmentUpdate(BaseModel):
     start_time: datetime | None = None
+    master_id: int | None = None
     status: AppointmentStatus | None = None
 
 

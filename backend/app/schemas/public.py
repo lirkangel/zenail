@@ -60,6 +60,7 @@ class AppointmentOut(BaseModel):
     id: int
     branch_id: int
     master_id: int
+    master_name: str | None = None
     procedure_id: int
     procedure_ids: list[int]
     procedures: list[AppointmentProcedureOut]

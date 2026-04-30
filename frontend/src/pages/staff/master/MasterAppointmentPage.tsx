@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
 import type { Appointment } from '../../../api/types'
@@ -13,6 +13,7 @@ type FormValues = { proposed_start_time: string; reason?: string }
 
 export function MasterAppointmentPage() {
   const { id } = useParams()
+  const nav = useNavigate()
   const { token } = useAuth()
   const qc = useQueryClient()
 
@@ -30,7 +31,7 @@ export function MasterAppointmentPage() {
         token: token ?? undefined,
         body: JSON.stringify({
           appointment_id: Number(id),
-          proposed_start_time: v.proposed_start_time,
+          proposed_start_time: new Date(v.proposed_start_time).toISOString(),
           reason: v.reason,
         }),
       }),
@@ -40,11 +41,14 @@ export function MasterAppointmentPage() {
   })
 
   const { register, handleSubmit } = useForm<FormValues>({
-    defaultValues: { proposed_start_time: new Date().toISOString(), reason: '' },
+    defaultValues: { proposed_start_time: toDateTimeLocal(new Date().toISOString()), reason: '' },
   })
 
   return (
     <Page title="Appointment" subtitle={`ID ${id}`}>
+      <Button variant="secondary" className="mb-3" type="button" onClick={() => nav(-1)}>
+        Back
+      </Button>
       <Card className="mb-3">
         {apptQ.isLoading ? <div className="text-xs text-slate-600">Loading…</div> : null}
         {apptQ.isError ? (
@@ -87,10 +91,10 @@ export function MasterAppointmentPage() {
         >
           <div>
             <label className="mb-1 block text-xs font-medium text-slate-700">
-              Proposed start time (ISO with timezone)
+              Proposed start time
             </label>
             <Input
-              placeholder="2026-04-30T14:00:00+07:00"
+              type="datetime-local"
               {...register('proposed_start_time', { required: true })}
             />
           </div>
@@ -107,5 +111,11 @@ export function MasterAppointmentPage() {
       </Card>
     </Page>
   )
+}
+
+function toDateTimeLocal(value: string) {
+  const date = new Date(value)
+  const offsetMs = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16)
 }
 

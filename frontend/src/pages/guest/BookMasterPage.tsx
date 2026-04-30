@@ -19,10 +19,10 @@ export function BookMasterPage() {
       {!branchId ? <div className="text-sm text-rose-700">Branch is missing.</div> : null}
       {q.isLoading ? <div className="text-sm text-slate-600">Loading…</div> : null}
       {q.isError ? <div className="text-sm text-rose-700">Failed to load masters.</div> : null}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {(q.data ?? []).map((m) => (
           <Link key={m.id} to={`/book/procedure?branch=${branchId}&master=${m.id}`}>
-            <Card className="hover:border-slate-300">
+            <Card className="p-5 hover:border-slate-300">
               <div className="text-sm font-semibold">{m.full_name}</div>
             </Card>
           </Link>

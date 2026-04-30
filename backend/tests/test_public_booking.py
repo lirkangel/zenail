@@ -283,3 +283,60 @@ def test_manager_approves_reschedule_updates_appointment(client, db_session):
     assert updated is not None
     assert updated.start_time.hour == 14
 
+
+def test_manager_can_see_and_reassign_appointment_master(client, db_session):
+    branch, master, proc = seed_min(db_session)
+    other_master = Staff(
+        full_name="M2",
+        email="m2@example.com",
+        role=StaffRole.master,
+        branch_id=branch.id,
+        password_hash=hash_password("x"),
+        is_active=True,
+    )
+    manager = Staff(
+        full_name="Mgr",
+        email="mgr3@example.com",
+        role=StaffRole.manager,
+        branch_id=branch.id,
+        password_hash=hash_password("manager123"),
+        is_active=True,
+    )
+    db_session.add_all([other_master, manager])
+    db_session.flush()
+    db_session.add(MasterProcedure(master_id=other_master.id, procedure_id=proc.id))
+
+    appt = Appointment(
+        branch_id=branch.id,
+        master_id=master.id,
+        procedure_id=proc.id,
+        client_name="A",
+        client_phone="1",
+        start_time=datetime(2030, 1, 1, 10, 0, tzinfo=timezone.utc),
+        end_time=datetime(2030, 1, 1, 11, 0, tzinfo=timezone.utc),
+        price=Decimal("10.00"),
+        status=AppointmentStatus.scheduled,
+    )
+    db_session.add(appt)
+    db_session.commit()
+
+    token = client.post("/api/auth/login", json={"email": manager.email, "password": "manager123"}).json()[
+        "access_token"
+    ]
+    listed = client.get(
+        "/api/manager/appointments?date=2030-01-01",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    listed.raise_for_status()
+    assert listed.json()[0]["master_name"] == "M1"
+
+    reassigned = client.patch(
+        f"/api/manager/appointments/{appt.id}",
+        json={"master_id": other_master.id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    reassigned.raise_for_status()
+    data = reassigned.json()
+    assert data["master_id"] == other_master.id
+    assert data["master_name"] == "M2"
+
