@@ -56,7 +56,8 @@ export function ManagerRequestsPage() {
                 Approve
               </Button>
               <Button
-                className="flex-1 bg-white text-slate-900 border border-slate-200 hover:bg-slate-50"
+                variant="secondary"
+                className="flex-1"
                 disabled={decide.isPending || r.status !== 'pending'}
                 onClick={() => decide.mutate({ id: r.id, status: 'rejected' })}
                 type="button"

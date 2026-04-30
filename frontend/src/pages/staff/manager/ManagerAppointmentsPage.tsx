@@ -144,7 +144,8 @@ function AppointmentRow({
             Reschedule
           </Button>
           <Button
-            className="flex-1 border border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+            variant="secondary"
+            className="flex-1"
             disabled={pending || appt.status === 'canceled'}
             type="button"
             onClick={onCancel}
