@@ -24,12 +24,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   })
 
   async function refreshMe() {
-    if (!token) {
+    return refreshMeWithToken(token)
+  }
+
+  async function refreshMeWithToken(nextToken: string | null) {
+    if (!nextToken) {
       setMe(null)
       localStorage.removeItem(ME_KEY)
       return
     }
-    const next = await apiFetch<Me>('/api/me', { token })
+    const next = await apiFetch<Me>('/api/me', { token: nextToken })
     setMe(next)
     localStorage.setItem(ME_KEY, JSON.stringify(next))
   }
@@ -41,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
     setToken(resp.access_token)
     localStorage.setItem(TOKEN_KEY, resp.access_token)
-    await refreshMe()
+    await refreshMeWithToken(resp.access_token)
   }
 
   function logout() {

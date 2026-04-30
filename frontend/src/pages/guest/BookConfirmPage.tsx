@@ -6,6 +6,7 @@ import { Card } from '../../components/Card'
 import { Input } from '../../components/Input'
 import { Page } from '../../components/Page'
 import type { Appointment } from '../../api/types'
+import { saveLastBooking } from '../../state/booking'
 
 type FormValues = { client_name: string; client_phone: string }
 
@@ -14,7 +15,7 @@ export function BookConfirmPage() {
   const nav = useNavigate()
   const branchId = sp.get('branch')
   const masterId = sp.get('master')
-  const procedureId = sp.get('procedure')
+  const procedureIds = sp.get('procedures') ?? sp.get('procedure')
   const startTime = sp.get('start_time')
 
   const {
@@ -25,7 +26,7 @@ export function BookConfirmPage() {
 
   return (
     <Page title="Confirm booking" subtitle="Enter your details and confirm.">
-      {!branchId || !masterId || !procedureId || !startTime ? (
+      {!branchId || !masterId || !procedureIds || !startTime ? (
         <div className="text-sm text-rose-700">Missing booking information.</div>
       ) : null}
 
@@ -33,18 +34,19 @@ export function BookConfirmPage() {
         <form
           className="space-y-3"
           onSubmit={handleSubmit(async (v) => {
-            if (!branchId || !masterId || !procedureId || !startTime) return
+            if (!branchId || !masterId || !procedureIds || !startTime) return
             const appt = await apiFetch<Appointment>('/api/appointments', {
               method: 'POST',
               body: JSON.stringify({
                 branch_id: Number(branchId),
                 master_id: Number(masterId),
-                procedure_id: Number(procedureId),
+                procedure_ids: procedureIds.split(',').map((id) => Number(id)),
                 client_name: v.client_name,
                 client_phone: v.client_phone,
                 start_time: startTime,
               }),
             })
+            saveLastBooking(appt)
             nav(`/book/success?id=${appt.id}`, { replace: true })
           })}
         >

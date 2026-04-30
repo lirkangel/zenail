@@ -10,6 +10,7 @@ from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.appointment import Appointment
 from app.models.branch import Branch
+from app.models.branch_non_working_day import BranchNonWorkingDay
 from app.models.enums import AppointmentStatus, RescheduleRequestStatus, StaffRole
 from app.models.master_procedure import MasterProcedure
 from app.models.procedure import Procedure
@@ -21,6 +22,8 @@ from app.schemas.admin import (
     AppointmentUpdate,
     BranchAdminOut,
     BranchCreate,
+    BranchNonWorkingDayCreate,
+    BranchNonWorkingDayOut,
     BranchUpdate,
     MasterProcedureLink,
     ProcedureAdminOut,
@@ -459,6 +462,8 @@ def list_procedures(db: Session = Depends(get_db), _: Staff = Depends(require_ad
         ProcedureAdminOut(
             id=p.id,
             name=p.name,
+            description=p.description,
+            category=p.category,
             duration_minutes=p.duration_minutes,
             price=p.price,
             is_active=p.is_active,
@@ -475,6 +480,8 @@ def create_procedure(
 ) -> ProcedureAdminOut:
     p = Procedure(
         name=payload.name,
+        description=payload.description,
+        category=payload.category,
         duration_minutes=payload.duration_minutes,
         price=payload.price,
         is_active=payload.is_active,
@@ -485,6 +492,8 @@ def create_procedure(
     return ProcedureAdminOut(
         id=p.id,
         name=p.name,
+        description=p.description,
+        category=p.category,
         duration_minutes=p.duration_minutes,
         price=p.price,
         is_active=p.is_active,
@@ -508,10 +517,85 @@ def update_procedure(
     return ProcedureAdminOut(
         id=p.id,
         name=p.name,
+        description=p.description,
+        category=p.category,
         duration_minutes=p.duration_minutes,
         price=p.price,
         is_active=p.is_active,
     )
+
+
+@router.delete("/admin/procedures/{procedure_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_procedure(
+    procedure_id: int,
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> None:
+    p = db.get(Procedure, procedure_id)
+    if not p:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Procedure not found")
+    p.is_active = False
+    db.commit()
+
+
+@router.get("/admin/branches/{branch_id}/non-working-days", response_model=list[BranchNonWorkingDayOut])
+def list_non_working_days(
+    branch_id: int,
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> list[BranchNonWorkingDayOut]:
+    rows = db.scalars(
+        select(BranchNonWorkingDay)
+        .where(BranchNonWorkingDay.branch_id == branch_id)
+        .order_by(BranchNonWorkingDay.day)
+    ).all()
+    return [
+        BranchNonWorkingDayOut(id=r.id, branch_id=r.branch_id, day=r.day, reason=r.reason)
+        for r in rows
+    ]
+
+
+@router.post(
+    "/admin/branches/{branch_id}/non-working-days",
+    response_model=BranchNonWorkingDayOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_non_working_day(
+    branch_id: int,
+    payload: BranchNonWorkingDayCreate,
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> BranchNonWorkingDayOut:
+    branch = db.get(Branch, branch_id)
+    if not branch:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+    row = db.scalar(
+        select(BranchNonWorkingDay).where(
+            BranchNonWorkingDay.branch_id == branch_id,
+            BranchNonWorkingDay.day == payload.day,
+        )
+    )
+    if row:
+        row.reason = payload.reason
+    else:
+        row = BranchNonWorkingDay(branch_id=branch_id, day=payload.day, reason=payload.reason)
+        db.add(row)
+    db.commit()
+    db.refresh(row)
+    return BranchNonWorkingDayOut(id=row.id, branch_id=row.branch_id, day=row.day, reason=row.reason)
+
+
+@router.delete("/admin/branches/{branch_id}/non-working-days/{day_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_non_working_day(
+    branch_id: int,
+    day_id: int,
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> None:
+    row = db.get(BranchNonWorkingDay, day_id)
+    if row and row.branch_id == branch_id:
+        db.delete(row)
+        db.commit()
 
 
 @router.post("/admin/master-procedures", status_code=status.HTTP_201_CREATED)

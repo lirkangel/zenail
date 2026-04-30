@@ -41,4 +41,9 @@ class Appointment(Base):
     branch = relationship("Branch")
     master = relationship("Staff", foreign_keys=[master_id])
     procedure = relationship("Procedure")
+    procedures = relationship(
+        "AppointmentProcedure",
+        cascade="all, delete-orphan",
+        order_by="AppointmentProcedure.sort_order",
+    )
 

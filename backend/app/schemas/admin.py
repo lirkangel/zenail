@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import date, datetime, time
 from decimal import Decimal
 
 from pydantic import BaseModel, EmailStr
@@ -63,6 +63,8 @@ class StaffAdminOut(BaseModel):
 
 class ProcedureCreate(BaseModel):
     name: str
+    description: str | None = None
+    category: str | None = None
     duration_minutes: int
     price: Decimal
     is_active: bool = True
@@ -70,6 +72,8 @@ class ProcedureCreate(BaseModel):
 
 class ProcedureUpdate(BaseModel):
     name: str | None = None
+    description: str | None = None
+    category: str | None = None
     duration_minutes: int | None = None
     price: Decimal | None = None
     is_active: bool | None = None
@@ -78,9 +82,23 @@ class ProcedureUpdate(BaseModel):
 class ProcedureAdminOut(BaseModel):
     id: int
     name: str
+    description: str | None = None
+    category: str | None = None
     duration_minutes: int
     price: Decimal
     is_active: bool
+
+
+class BranchNonWorkingDayCreate(BaseModel):
+    day: date
+    reason: str | None = None
+
+
+class BranchNonWorkingDayOut(BaseModel):
+    id: int
+    branch_id: int
+    day: date
+    reason: str | None = None
 
 
 class MasterProcedureLink(BaseModel):

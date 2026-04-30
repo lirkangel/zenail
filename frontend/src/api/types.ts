@@ -14,15 +14,27 @@ export type Master = { id: number; full_name: string }
 export type Procedure = {
   id: number
   name: string
+  description?: string | null
+  category?: string | null
   duration_minutes: number
   price: string
 }
 
 export type Availability = {
   master_id: number
-  procedure_id: number
+  procedure_id?: number | null
+  procedure_ids: number[]
   date: string
+  total_duration_minutes: number
+  total_price: string
   slots: string[]
+}
+
+export type AppointmentProcedure = {
+  id: number
+  name: string
+  duration_minutes: number
+  price: string
 }
 
 export type Appointment = {
@@ -30,10 +42,13 @@ export type Appointment = {
   branch_id: number
   master_id: number
   procedure_id: number
+  procedure_ids: number[]
+  procedures: AppointmentProcedure[]
   client_name: string
   client_phone: string
   start_time: string
   end_time: string
+  total_duration_minutes: number
   price: string
   status: 'scheduled' | 'completed' | 'canceled'
 }

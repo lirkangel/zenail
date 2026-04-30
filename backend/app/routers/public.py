@@ -2,12 +2,14 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.models.appointment import Appointment
+from app.models.appointment_procedure import AppointmentProcedure
 from app.models.branch import Branch
+from app.models.branch_non_working_day import BranchNonWorkingDay
 from app.models.enums import AppointmentStatus, StaffRole
 from app.models.master_procedure import MasterProcedure
 from app.models.procedure import Procedure
@@ -15,6 +17,7 @@ from app.models.staff import Staff
 from app.schemas.public import (
     AppointmentCreate,
     AppointmentOut,
+    AppointmentProcedureOut,
     AvailabilityOut,
     BranchOut,
     MasterOut,
@@ -23,6 +26,84 @@ from app.schemas.public import (
 from app.services.scheduling import day_bounds_utc, iter_slots
 
 router = APIRouter(tags=["public"])
+
+
+def _parse_procedure_ids(
+    *,
+    procedure_id: int | None = None,
+    procedure_ids: str | list[int] | None = None,
+) -> list[int]:
+    ids: list[int] = []
+    if isinstance(procedure_ids, str) and procedure_ids.strip():
+        ids.extend(int(part) for part in procedure_ids.split(",") if part.strip())
+    elif isinstance(procedure_ids, list):
+        ids.extend(procedure_ids)
+    if procedure_id is not None:
+        ids.append(procedure_id)
+
+    deduped: list[int] = []
+    for value in ids:
+        if value not in deduped:
+            deduped.append(value)
+    if not deduped:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="At least one procedure is required")
+    return deduped
+
+
+def _load_master_procedures(db: Session, *, master_id: int, procedure_ids: list[int]) -> list[Procedure]:
+    procs = db.scalars(
+        select(Procedure)
+        .join(MasterProcedure, MasterProcedure.procedure_id == Procedure.id)
+        .where(
+            MasterProcedure.master_id == master_id,
+            Procedure.id.in_(procedure_ids),
+            Procedure.is_active.is_(True),
+        )
+    ).all()
+    by_id = {p.id: p for p in procs}
+    missing = [pid for pid in procedure_ids if pid not in by_id]
+    if missing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Procedure not available")
+    return [by_id[pid] for pid in procedure_ids]
+
+
+def _appointment_out(appt: Appointment) -> AppointmentOut:
+    snapshots = list(appt.procedures)
+    if snapshots:
+        procedures = [
+            AppointmentProcedureOut(
+                id=p.procedure_id,
+                name=p.name_snapshot,
+                duration_minutes=p.duration_minutes_snapshot,
+                price=p.price_snapshot,
+            )
+            for p in snapshots
+        ]
+    else:
+        procedures = [
+            AppointmentProcedureOut(
+                id=appt.procedure_id,
+                name=appt.procedure.name if appt.procedure else "Procedure",
+                duration_minutes=appt.procedure.duration_minutes if appt.procedure else 0,
+                price=appt.price,
+            )
+        ]
+
+    return AppointmentOut(
+        id=appt.id,
+        branch_id=appt.branch_id,
+        master_id=appt.master_id,
+        procedure_id=appt.procedure_id,
+        procedure_ids=[p.id for p in procedures],
+        procedures=procedures,
+        client_name=appt.client_name,
+        client_phone=appt.client_phone,
+        start_time=appt.start_time,
+        end_time=appt.end_time,
+        total_duration_minutes=sum(p.duration_minutes for p in procedures),
+        price=appt.price,
+        status=appt.status,
+    )
 
 
 @router.get("/branches", response_model=list[BranchOut])
@@ -70,6 +151,8 @@ def list_master_procedures(master_id: int, db: Session = Depends(get_db)) -> lis
         ProcedureOut(
             id=p.id,
             name=p.name,
+            description=p.description,
+            category=p.category,
             duration_minutes=p.duration_minutes,
             price=p.price,
         )
@@ -80,7 +163,8 @@ def list_master_procedures(master_id: int, db: Session = Depends(get_db)) -> lis
 @router.get("/availability", response_model=AvailabilityOut)
 def availability(
     master_id: int = Query(...),
-    procedure_id: int = Query(...),
+    procedure_id: int | None = Query(None),
+    procedure_ids: str | None = Query(None),
     date_str: str = Query(..., alias="date"),
     db: Session = Depends(get_db),
 ) -> AvailabilityOut:
@@ -88,6 +172,8 @@ def availability(
         day = date.fromisoformat(date_str)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid date")
+    if day < date.today():
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot book a past date")
 
     master = db.scalar(select(Staff).where(Staff.id == master_id, Staff.role == StaffRole.master))
     if not master or not master.branch_id:
@@ -97,13 +183,27 @@ def availability(
     if not branch:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
 
-    proc = db.scalar(
-        select(Procedure)
-        .join(MasterProcedure, MasterProcedure.procedure_id == Procedure.id)
-        .where(MasterProcedure.master_id == master_id, Procedure.id == procedure_id, Procedure.is_active.is_(True))
+    selected_ids = _parse_procedure_ids(procedure_id=procedure_id, procedure_ids=procedure_ids)
+    procs = _load_master_procedures(db, master_id=master_id, procedure_ids=selected_ids)
+    total_duration = sum(p.duration_minutes for p in procs)
+    total_price = sum((Decimal(p.price) for p in procs), Decimal("0"))
+
+    closed = db.scalar(
+        select(BranchNonWorkingDay).where(
+            BranchNonWorkingDay.branch_id == branch.id,
+            BranchNonWorkingDay.day == day,
+        )
     )
-    if not proc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Procedure not available")
+    if closed:
+        return AvailabilityOut(
+            master_id=master_id,
+            procedure_id=selected_ids[0],
+            procedure_ids=selected_ids,
+            date=date_str,
+            total_duration_minutes=total_duration,
+            total_price=total_price,
+            slots=[],
+        )
 
     day_start, day_end = day_bounds_utc(day)
     existing = db.scalars(
@@ -119,9 +219,9 @@ def availability(
         day=day,
         open_time=branch.open_time,
         close_time=branch.close_time,
-        duration_minutes=proc.duration_minutes,
+        duration_minutes=total_duration,
     )
-    duration = timedelta(minutes=proc.duration_minutes)
+    duration = timedelta(minutes=total_duration)
 
     free: list = []
     for start in candidates:
@@ -130,7 +230,15 @@ def availability(
             continue
         free.append(start)
 
-    return AvailabilityOut(master_id=master_id, procedure_id=procedure_id, date=date_str, slots=free)
+    return AvailabilityOut(
+        master_id=master_id,
+        procedure_id=selected_ids[0],
+        procedure_ids=selected_ids,
+        date=date_str,
+        total_duration_minutes=total_duration,
+        total_price=total_price,
+        slots=free,
+    )
 
 
 @router.post("/appointments", response_model=AppointmentOut, status_code=status.HTTP_201_CREATED)
@@ -151,18 +259,26 @@ def create_appointment(payload: AppointmentCreate, db: Session = Depends(get_db)
     if not branch:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
 
-    proc = db.scalar(
-        select(Procedure)
-        .join(MasterProcedure, MasterProcedure.procedure_id == Procedure.id)
-        .where(MasterProcedure.master_id == payload.master_id, Procedure.id == payload.procedure_id, Procedure.is_active.is_(True))
-    )
-    if not proc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Procedure not available")
+    selected_ids = _parse_procedure_ids(procedure_id=payload.procedure_id, procedure_ids=payload.procedure_ids)
+    procs = _load_master_procedures(db, master_id=payload.master_id, procedure_ids=selected_ids)
+    total_duration = sum(p.duration_minutes for p in procs)
+    total_price = sum((Decimal(p.price) for p in procs), Decimal("0"))
 
     start = payload.start_time
     if start.tzinfo is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="start_time must include timezone")
-    end = start + timedelta(minutes=proc.duration_minutes)
+    if start.date() < date.today():
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot book a past date")
+    end = start + timedelta(minutes=total_duration)
+
+    closed = db.scalar(
+        select(BranchNonWorkingDay).where(
+            BranchNonWorkingDay.branch_id == branch.id,
+            BranchNonWorkingDay.day == start.date(),
+        )
+    )
+    if closed:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Branch is closed on this day")
 
     # branch hours check (UTC-based)
     if start.time() < branch.open_time or end.time() > branch.close_time:
@@ -182,28 +298,41 @@ def create_appointment(payload: AppointmentCreate, db: Session = Depends(get_db)
     appt = Appointment(
         branch_id=payload.branch_id,
         master_id=payload.master_id,
-        procedure_id=payload.procedure_id,
+        procedure_id=selected_ids[0],
         client_name=payload.client_name,
         client_phone=payload.client_phone,
         start_time=start,
         end_time=end,
-        price=Decimal(proc.price),
+        price=total_price,
         status=AppointmentStatus.scheduled,
     )
     db.add(appt)
+    db.flush()
+    for idx, proc in enumerate(procs):
+        db.add(
+            AppointmentProcedure(
+                appointment_id=appt.id,
+                procedure_id=proc.id,
+                sort_order=idx,
+                name_snapshot=proc.name,
+                duration_minutes_snapshot=proc.duration_minutes,
+                price_snapshot=Decimal(proc.price),
+            )
+        )
     db.commit()
     db.refresh(appt)
 
-    return AppointmentOut(
-        id=appt.id,
-        branch_id=appt.branch_id,
-        master_id=appt.master_id,
-        procedure_id=appt.procedure_id,
-        client_name=appt.client_name,
-        client_phone=appt.client_phone,
-        start_time=appt.start_time,
-        end_time=appt.end_time,
-        price=appt.price,
-        status=appt.status,
-    )
+    return _appointment_out(appt)
+
+
+@router.get("/appointments/{appointment_id}", response_model=AppointmentOut)
+def get_public_appointment(
+    appointment_id: int,
+    client_phone: str = Query(...),
+    db: Session = Depends(get_db),
+) -> AppointmentOut:
+    appt = db.get(Appointment, appointment_id)
+    if not appt or appt.client_phone != client_phone:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+    return _appointment_out(appt)
 

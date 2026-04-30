@@ -8,6 +8,7 @@ from sqlalchemy import select
 from app.core.security import hash_password
 from app.db.session import SessionLocal
 from app.models.appointment import Appointment
+from app.models.appointment_procedure import AppointmentProcedure
 from app.models.branch import Branch
 from app.models.enums import AppointmentStatus, StaffRole
 from app.models.master_procedure import MasterProcedure
@@ -50,11 +51,31 @@ def _ensure_staff(
     return s
 
 
-def _ensure_procedure(db, *, name: str, duration: int, price: Decimal) -> Procedure:
+def _ensure_procedure(
+    db,
+    *,
+    name: str,
+    duration: int,
+    price: Decimal,
+    category: str,
+    description: str,
+) -> Procedure:
     p = db.scalar(select(Procedure).where(Procedure.name == name))
     if p:
+        p.duration_minutes = duration
+        p.price = price
+        p.category = category
+        p.description = description
+        p.is_active = True
         return p
-    p = Procedure(name=name, duration_minutes=duration, price=price, is_active=True)
+    p = Procedure(
+        name=name,
+        duration_minutes=duration,
+        price=price,
+        category=category,
+        description=description,
+        is_active=True,
+    )
     db.add(p)
     db.flush()
     return p
@@ -139,12 +160,12 @@ def run() -> None:
         ]
 
         procs = [
-            _ensure_procedure(db, name="Manicure (Classic)", duration=60, price=Decimal("25.00")),
-            _ensure_procedure(db, name="Manicure (Gel)", duration=75, price=Decimal("35.00")),
-            _ensure_procedure(db, name="Pedicure (Classic)", duration=75, price=Decimal("32.00")),
-            _ensure_procedure(db, name="Pedicure (Spa)", duration=90, price=Decimal("45.00")),
-            _ensure_procedure(db, name="Nail Art (Add-on)", duration=30, price=Decimal("15.00")),
-            _ensure_procedure(db, name="Removal (Gel)", duration=30, price=Decimal("10.00")),
+            _ensure_procedure(db, name="Manicure (Classic)", duration=60, price=Decimal("25.00"), category="Hands", description="Nail shaping, cuticle care, light buffing, and classic polish."),
+            _ensure_procedure(db, name="Manicure (Gel)", duration=75, price=Decimal("35.00"), category="Hands", description="Long-lasting gel polish with cuticle care and nail shaping."),
+            _ensure_procedure(db, name="Pedicure (Classic)", duration=75, price=Decimal("32.00"), category="Feet", description="Foot soak, nail care, heel smoothing, massage, and classic polish."),
+            _ensure_procedure(db, name="Pedicure (Spa)", duration=90, price=Decimal("45.00"), category="Feet", description="Classic pedicure plus exfoliation, mask, and extended massage."),
+            _ensure_procedure(db, name="Nail Art (Add-on)", duration=30, price=Decimal("15.00"), category="Add-ons", description="Simple hand-painted art, accent nails, stickers, or small details."),
+            _ensure_procedure(db, name="Removal (Gel)", duration=30, price=Decimal("10.00"), category="Add-ons", description="Careful gel removal before a new service or nail rest."),
         ]
 
         for m in masters_a + masters_b:
@@ -179,17 +200,27 @@ def run() -> None:
             )
             if exists:
                 return
+            appt = Appointment(
+                branch_id=branch_id,
+                master_id=master_id,
+                procedure_id=procedure.id,
+                client_name=f"Client {i}",
+                client_phone=f"+100000000{i}",
+                start_time=start,
+                end_time=end,
+                price=procedure.price,
+                status=status,
+            )
+            db.add(appt)
+            db.flush()
             db.add(
-                Appointment(
-                    branch_id=branch_id,
-                    master_id=master_id,
+                AppointmentProcedure(
+                    appointment_id=appt.id,
                     procedure_id=procedure.id,
-                    client_name=f"Client {i}",
-                    client_phone=f"+100000000{i}",
-                    start_time=start,
-                    end_time=end,
-                    price=procedure.price,
-                    status=status,
+                    sort_order=0,
+                    name_snapshot=procedure.name,
+                    duration_minutes_snapshot=procedure.duration_minutes,
+                    price_snapshot=procedure.price,
                 )
             )
 

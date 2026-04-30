@@ -10,9 +10,19 @@ import { useAuth } from '../../../state/auth'
 type ProcRow = {
   id: number
   name: string
+  description?: string | null
+  category?: string | null
   duration_minutes: number
   price: string
   is_active: boolean
+}
+
+type ProcedureForm = {
+  name: string
+  description?: string
+  category?: string
+  duration_minutes: number
+  price: string
 }
 
 export function AdminProceduresPage() {
@@ -34,12 +44,31 @@ export function AdminProceduresPage() {
       await qc.invalidateQueries({ queryKey: ['adminProcedures'] })
     },
   })
+  const updateM = useMutation({
+    mutationFn: ({ id, body }: { id: number; body: unknown }) =>
+      apiFetch(`/api/admin/procedures/${id}`, {
+        method: 'PATCH',
+        token: token ?? undefined,
+        body: JSON.stringify(body),
+      }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['adminProcedures'] })
+    },
+  })
+  const deleteM = useMutation({
+    mutationFn: (id: number) =>
+      apiFetch(`/api/admin/procedures/${id}`, {
+        method: 'DELETE',
+        token: token ?? undefined,
+      }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['adminProcedures'] })
+    },
+  })
 
-  const { register, handleSubmit, reset } = useForm<{
-    name: string
-    duration_minutes: number
-    price: string
-  }>({ defaultValues: { name: '', duration_minutes: 60, price: '0.00' } })
+  const { register, handleSubmit, reset } = useForm<ProcedureForm>({
+    defaultValues: { name: '', description: '', category: '', duration_minutes: 60, price: '0.00' },
+  })
 
   return (
     <Page title="Procedures" subtitle="Manage procedure catalog.">
@@ -53,6 +82,8 @@ export function AdminProceduresPage() {
         >
           <div className="text-sm font-semibold">Add procedure</div>
           <Input placeholder="Name" {...register('name', { required: true })} />
+          <Input placeholder="Category (Hands, Feet, Add-ons)" {...register('category')} />
+          <Input placeholder="Description" {...register('description')} />
           <div className="flex gap-2">
             <Input
               placeholder="Duration (minutes)"
@@ -69,16 +100,73 @@ export function AdminProceduresPage() {
 
       <div className="space-y-3">
         {(q.data ?? []).map((p) => (
-          <Card key={p.id}>
-            <div className="flex items-baseline justify-between gap-3">
-              <div className="text-sm font-semibold">{p.name}</div>
-              <div className="text-xs text-slate-600">${p.price}</div>
-            </div>
-            <div className="mt-1 text-xs text-slate-600">{p.duration_minutes} min</div>
-          </Card>
+          <ProcedureEditor
+            key={p.id}
+            procedure={p}
+            pending={updateM.isPending || deleteM.isPending}
+            onSave={(body) => updateM.mutate({ id: p.id, body })}
+            onRemove={() => deleteM.mutate(p.id)}
+          />
         ))}
       </div>
     </Page>
+  )
+}
+
+function ProcedureEditor({
+  procedure,
+  pending,
+  onSave,
+  onRemove,
+}: {
+  procedure: ProcRow
+  pending: boolean
+  onSave: (body: ProcedureForm & { is_active: boolean }) => void
+  onRemove: () => void
+}) {
+  const { register, handleSubmit } = useForm<ProcedureForm>({
+    defaultValues: {
+      name: procedure.name,
+      category: procedure.category ?? '',
+      description: procedure.description ?? '',
+      duration_minutes: procedure.duration_minutes,
+      price: procedure.price,
+    },
+  })
+
+  return (
+    <Card className={!procedure.is_active ? 'opacity-60' : ''}>
+      <form className="space-y-2" onSubmit={handleSubmit((v) => onSave({ ...v, is_active: true }))}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-sm font-semibold">Procedure #{procedure.id}</div>
+          <div className="text-xs text-slate-500">{procedure.is_active ? 'active' : 'removed'}</div>
+        </div>
+        <Input placeholder="Name" {...register('name', { required: true })} />
+        <Input placeholder="Category" {...register('category')} />
+        <Input placeholder="Description" {...register('description')} />
+        <div className="flex gap-2">
+          <Input
+            placeholder="Duration"
+            type="number"
+            {...register('duration_minutes', { valueAsNumber: true, required: true })}
+          />
+          <Input placeholder="Price" {...register('price', { required: true })} />
+        </div>
+        <div className="flex gap-2">
+          <Button className="flex-1" disabled={pending} type="submit">
+            Save
+          </Button>
+          <Button
+            className="flex-1 border border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+            disabled={pending || !procedure.is_active}
+            onClick={onRemove}
+            type="button"
+          >
+            Remove
+          </Button>
+        </div>
+      </form>
+    </Card>
   )
 }
 
