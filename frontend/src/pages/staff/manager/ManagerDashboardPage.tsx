@@ -9,10 +9,8 @@ import { useAuth } from '../../../state/auth'
 
 export function ManagerDashboardPage() {
   const { token } = useAuth()
-  const today = startOfDay(new Date())
-  const [day, setDay] = useState(today)
+  const [day, setDay] = useState(startOfDay(new Date()))
   const dayStr = useMemo(() => format(day, 'yyyy-MM-dd'), [day])
-  const isToday = format(day, 'yyyy-MM-dd') <= format(today, 'yyyy-MM-dd')
 
   const q = useQuery({
     queryKey: ['managerAppointments', dayStr],
@@ -31,8 +29,7 @@ export function ManagerDashboardPage() {
       <div className="mb-3 flex gap-2">
         <button
           type="button"
-          disabled={isToday}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs disabled:opacity-40"
+          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
           onClick={() => setDay((d) => addDays(d, -1))}
         >
           Prev
