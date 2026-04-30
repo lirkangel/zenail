@@ -26,10 +26,6 @@ def upgrade() -> None:
         "pending", "approved", "rejected", name="reschedule_request_status"
     )
 
-    staff_role.create(op.get_bind(), checkfirst=True)
-    appointment_status.create(op.get_bind(), checkfirst=True)
-    reschedule_request_status.create(op.get_bind(), checkfirst=True)
-
     op.create_table(
         "branches",
         sa.Column("id", sa.Integer(), primary_key=True),
