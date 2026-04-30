@@ -9,5 +9,5 @@ body,
 }
 
 body {
-  @apply bg-white text-slate-900 antialiased;
+  @apply min-h-full bg-gradient-to-b from-studio-cream via-white to-fuchsia-50 text-slate-900 antialiased;
 }

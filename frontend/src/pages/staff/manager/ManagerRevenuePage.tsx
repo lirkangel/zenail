@@ -5,10 +5,12 @@ import { apiFetch } from '../../../api/client'
 import { Card } from '../../../components/Card'
 import { Page } from '../../../components/Page'
 import { useAuth } from '../../../state/auth'
+import { useT } from '../../../state/i18n'
 
 type Revenue = { from_date: string; to_date: string; total: string }
 
 export function ManagerRevenuePage() {
+  const t = useT()
   const { token } = useAuth()
   const from = useMemo(() => format(new Date(), 'yyyy-MM-01'), [])
   const to = useMemo(() => format(new Date(), 'yyyy-MM-dd'), [])
@@ -19,14 +21,13 @@ export function ManagerRevenuePage() {
   })
 
   return (
-    <Page title="Revenue" subtitle="Completed appointments total.">
-      <Card>
-        <div className="text-xs text-slate-600">
-          Range: {from} → {to}
+    <Page title={t('manager.revenue.title')} subtitle={t('manager.revenue.subtitle')}>
+      <Card className="border-amber-100/80 bg-gradient-to-br from-amber-50/80 to-rose-50/70">
+        <div className="text-xs text-rose-900/75">
+          {t('common.range')}: {from} → {to}
         </div>
-        <div className="mt-2 text-2xl font-semibold">${q.data?.total ?? '—'}</div>
+        <div className="mt-2 text-2xl font-semibold text-rose-950">${q.data?.total ?? t('common.emDash')}</div>
       </Card>
     </Page>
   )
 }
-

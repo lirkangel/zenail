@@ -6,8 +6,10 @@ import { apiFetch } from '../../api/client'
 import type { Availability } from '../../api/types'
 import { Card } from '../../components/Card'
 import { Page } from '../../components/Page'
+import { useT } from '../../state/i18n'
 
 export function BookTimePage() {
+  const t = useT()
   const [sp] = useSearchParams()
   const branchId = sp.get('branch')
   const masterId = sp.get('master')
@@ -28,47 +30,47 @@ export function BookTimePage() {
   })
 
   return (
-    <Page title="Choose a time" subtitle="Pick an available time slot.">
+    <Page title={t('guest.time.title')} subtitle={t('guest.time.subtitle')}>
       {!branchId || !masterId || !procedureIds ? (
-        <div className="text-sm text-rose-700">Missing branch/master/procedure.</div>
+        <div className="text-sm text-rose-700">{t('guest.time.missing')}</div>
       ) : null}
 
       <div className="mb-3 flex gap-2">
         <button
           type="button"
           disabled={isToday}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs disabled:opacity-40"
+          className="rounded-xl border border-rose-200 bg-white/90 px-3 py-2 text-xs font-medium text-rose-800 shadow-sm disabled:opacity-40"
           onClick={() => setDay((d) => addDays(d, -1))}
         >
-          Prev
+          {t('common.prev')}
         </button>
-        <div className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-xs">
+        <div className="flex-1 rounded-xl border border-rose-200 bg-white/90 px-3 py-2 text-center text-xs font-medium text-rose-900 shadow-sm">
           {dayStr}
         </div>
         <button
           type="button"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
+          className="rounded-xl border border-rose-200 bg-white/90 px-3 py-2 text-xs font-medium text-rose-800 shadow-sm"
           onClick={() => setDay((d) => addDays(d, 1))}
         >
-          Next
+          {t('common.next')}
         </button>
       </div>
 
-      {q.isLoading ? <div className="text-sm text-slate-600">Loading…</div> : null}
-      {q.isError ? <div className="text-sm text-rose-700">Failed to load availability.</div> : null}
+      {q.isLoading ? <div className="text-sm text-rose-800/80">{t('guest.time.loading')}</div> : null}
+      {q.isError ? <div className="text-sm text-rose-700">{t('guest.time.error')}</div> : null}
       {q.data ? (
-        <Card className="mb-3">
+        <Card className="mb-3 border-amber-100/80 bg-gradient-to-r from-amber-50/90 to-rose-50/80">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-600">Selected total</span>
-            <span className="font-semibold">${q.data.total_price}</span>
+            <span className="text-rose-900/80">{t('guest.time.selectedTotal')}</span>
+            <span className="font-semibold text-rose-900">${q.data.total_price}</span>
           </div>
-          <div className="mt-1 text-xs text-slate-600">{q.data.total_duration_minutes} minutes</div>
+          <div className="mt-1 text-xs text-rose-900/70">
+            {t('guest.time.minutesTotal', { minutes: q.data.total_duration_minutes })}
+          </div>
         </Card>
       ) : null}
       {q.data && q.data.slots.length === 0 ? (
-        <div className="mb-3 text-sm text-slate-600">
-          No available slots for this day. Try another date.
-        </div>
+        <div className="mb-3 text-sm text-rose-900/75">{t('guest.time.noSlots')}</div>
       ) : null}
 
       <div className="grid grid-cols-2 gap-3">
@@ -79,8 +81,8 @@ export function BookTimePage() {
               slot,
             )}`}
           >
-            <Card className="py-3 text-center hover:border-slate-300">
-              <div className="text-sm font-semibold">
+            <Card className="py-3 text-center transition hover:border-rose-300 hover:shadow-studio">
+              <div className="text-sm font-semibold text-rose-950">
                 {new Date(slot).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
             </Card>
@@ -90,4 +92,3 @@ export function BookTimePage() {
     </Page>
   )
 }
-

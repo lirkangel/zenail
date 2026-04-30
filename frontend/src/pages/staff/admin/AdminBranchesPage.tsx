@@ -6,6 +6,7 @@ import { Card } from '../../../components/Card'
 import { Input } from '../../../components/Input'
 import { Page } from '../../../components/Page'
 import { useAuth } from '../../../state/auth'
+import { useT } from '../../../state/i18n'
 
 type BranchRow = {
   id: number
@@ -23,6 +24,7 @@ type NonWorkingDay = {
 }
 
 export function AdminBranchesPage() {
+  const t = useT()
   const { token } = useAuth()
   const qc = useQueryClient()
   const q = useQuery({
@@ -50,7 +52,7 @@ export function AdminBranchesPage() {
   }>({ defaultValues: { name: '', address: '', open_time: '09:00:00', close_time: '20:00:00' } })
 
   return (
-    <Page title="Branches" subtitle="Manage branch locations.">
+    <Page title={t('admin.branches.title')} subtitle={t('admin.branches.subtitle')}>
       <Card className="mb-3">
         <form
           className="space-y-2"
@@ -59,15 +61,15 @@ export function AdminBranchesPage() {
             reset()
           })}
         >
-          <div className="text-sm font-semibold">Add branch</div>
-          <Input placeholder="Name" {...register('name', { required: true })} />
-          <Input placeholder="Address" {...register('address')} />
+          <div className="text-sm font-semibold text-rose-950">{t('admin.branches.add')}</div>
+          <Input placeholder={t('placeholder.name')} {...register('name', { required: true })} />
+          <Input placeholder={t('placeholder.address')} {...register('address')} />
           <div className="flex gap-2">
-            <Input placeholder="Open (HH:MM:SS)" {...register('open_time', { required: true })} />
-            <Input placeholder="Close (HH:MM:SS)" {...register('close_time', { required: true })} />
+            <Input placeholder={t('placeholder.open')} {...register('open_time', { required: true })} />
+            <Input placeholder={t('placeholder.close')} {...register('close_time', { required: true })} />
           </div>
           <Button className="w-full" disabled={createM.isPending} type="submit">
-            {createM.isPending ? 'Saving…' : 'Create branch'}
+            {createM.isPending ? t('common.saving') : t('admin.branches.create')}
           </Button>
         </form>
       </Card>
@@ -82,6 +84,7 @@ export function AdminBranchesPage() {
 }
 
 function BranchCard({ branch, token }: { branch: BranchRow; token: string | null }) {
+  const t = useT()
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['nonWorkingDays', branch.id],
@@ -116,10 +119,10 @@ function BranchCard({ branch, token }: { branch: BranchRow; token: string | null
   })
 
   return (
-    <Card>
-      <div className="text-sm font-semibold">{branch.name}</div>
-      <div className="mt-1 text-xs text-slate-600">
-        Hours: {branch.open_time} – {branch.close_time}
+    <Card className="transition hover:border-rose-200 hover:shadow-studio">
+      <div className="text-sm font-semibold text-rose-950">{branch.name}</div>
+      <div className="mt-1 text-xs text-rose-900/75">
+        {t('admin.branches.hours', { open: branch.open_time, close: branch.close_time })}
       </div>
       <form
         className="mt-3 space-y-2"
@@ -128,32 +131,32 @@ function BranchCard({ branch, token }: { branch: BranchRow; token: string | null
           reset()
         })}
       >
-        <div className="text-xs font-semibold text-slate-700">Not working day</div>
+        <div className="text-xs font-semibold text-rose-900">{t('admin.branches.nonWorking')}</div>
         <div className="flex gap-2">
           <Input type="date" {...register('day', { required: true })} />
-          <Input placeholder="Reason" {...register('reason')} />
+          <Input placeholder={t('placeholder.reason')} {...register('reason')} />
         </div>
         <Button className="w-full" disabled={createM.isPending} type="submit">
-          Add / update closed day
+          {t('admin.branches.addDay')}
         </Button>
       </form>
       <div className="mt-3 space-y-2">
         {(q.data ?? []).map((d) => (
           <div
             key={d.id}
-            className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs"
+            className="flex items-center justify-between gap-2 rounded-xl border border-rose-100/80 bg-rose-50/40 px-3 py-2 text-xs"
           >
             <div>
-              <div className="font-semibold">{d.day}</div>
-              <div className="text-slate-600">{d.reason ?? 'Closed'}</div>
+              <div className="font-semibold text-rose-950">{d.day}</div>
+              <div className="text-rose-900/70">{d.reason ?? t('admin.branches.closedDefault')}</div>
             </div>
             <button
-              className="text-rose-700"
+              className="font-medium text-rose-700 hover:text-rose-800"
               disabled={deleteM.isPending}
               onClick={() => deleteM.mutate(d.id)}
               type="button"
             >
-              Remove
+              {t('admin.branches.remove')}
             </button>
           </div>
         ))}
@@ -161,4 +164,3 @@ function BranchCard({ branch, token }: { branch: BranchRow; token: string | null
     </Card>
   )
 }
-

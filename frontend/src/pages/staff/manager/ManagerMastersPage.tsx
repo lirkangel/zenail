@@ -6,10 +6,12 @@ import { Card } from '../../../components/Card'
 import { Input } from '../../../components/Input'
 import { Page } from '../../../components/Page'
 import { useAuth } from '../../../state/auth'
+import { useT } from '../../../state/i18n'
 
 type MasterRow = { id: number; full_name: string; branch_id: number | null }
 
 export function ManagerMastersPage() {
+  const t = useT()
   const { token } = useAuth()
   const qc = useQueryClient()
   const q = useQuery({
@@ -30,9 +32,9 @@ export function ManagerMastersPage() {
   })
 
   return (
-    <Page title="Masters" subtitle="Masters assigned to this branch.">
-      {q.isLoading ? <div className="text-sm text-slate-600">Loading…</div> : null}
-      {q.isError ? <div className="text-sm text-rose-700">Failed to load masters.</div> : null}
+    <Page title={t('manager.masters.title')} subtitle={t('manager.masters.subtitle')}>
+      {q.isLoading ? <div className="text-sm text-rose-800/80">{t('common.loading')}</div> : null}
+      {q.isError ? <div className="text-sm text-rose-700">{t('manager.masters.error')}</div> : null}
       <div className="space-y-3">
         {(q.data ?? []).map((row) => (
           <MasterRowCard
@@ -56,14 +58,15 @@ function MasterRowCard({
   pending: boolean
   onSave: (branchId: number | null) => void
 }) {
+  const t = useT()
   const [value, setValue] = useState(row.branch_id?.toString() ?? '')
   return (
-    <Card>
-      <div className="text-sm font-semibold">{row.full_name}</div>
+    <Card className="transition hover:border-rose-200 hover:shadow-studio">
+      <div className="text-sm font-semibold text-rose-950">{row.full_name}</div>
       <div className="mt-3 space-y-2">
         <div>
-          <label className="mb-1 block text-[11px] font-medium text-slate-700">
-            Reassign to branch id (blank to unassign)
+          <label className="mb-1 block text-[11px] font-medium text-rose-900/80">
+            {t('manager.masters.reassignLabel')}
           </label>
           <Input value={value} onChange={(e) => setValue(e.target.value)} />
         </div>
@@ -73,10 +76,9 @@ function MasterRowCard({
           type="button"
           onClick={() => onSave(value.trim() ? Number(value.trim()) : null)}
         >
-          Save assignment
+          {t('manager.masters.saveAssignment')}
         </Button>
       </div>
     </Card>
   )
 }
-

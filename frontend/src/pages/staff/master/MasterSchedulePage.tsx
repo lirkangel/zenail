@@ -7,8 +7,10 @@ import type { Appointment } from '../../../api/types'
 import { Card } from '../../../components/Card'
 import { Page } from '../../../components/Page'
 import { useAuth } from '../../../state/auth'
+import { appointmentStatusLabel, useT } from '../../../state/i18n'
 
 export function MasterSchedulePage() {
+  const t = useT()
   const { token } = useAuth()
   const [day, setDay] = useState(startOfDay(new Date()))
   const dayStr = useMemo(() => format(day, 'yyyy-MM-dd'), [day])
@@ -22,67 +24,65 @@ export function MasterSchedulePage() {
   })
 
   return (
-    <Page title="My schedule" subtitle={`Appointments for ${dayStr}`}>
+    <Page title={t('master.schedule.title')} subtitle={t('master.schedule.subtitle', { date: dayStr })}>
       <div className="mb-3 flex gap-2">
         <button
           type="button"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
+          className="rounded-xl border border-rose-200/80 bg-white/90 px-3 py-2 text-xs font-medium text-rose-900 shadow-sm transition hover:border-rose-300 hover:bg-white"
           onClick={() => setDay((d) => addDays(d, -1))}
         >
-          Prev
+          {t('common.prev')}
         </button>
-        <div className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-xs">
+        <div className="flex-1 rounded-xl border border-rose-200/80 bg-white/90 px-3 py-2 text-center text-xs font-medium text-rose-950 shadow-sm">
           {dayStr}
         </div>
         <button
           type="button"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
+          className="rounded-xl border border-rose-200/80 bg-white/90 px-3 py-2 text-xs font-medium text-rose-900 shadow-sm transition hover:border-rose-300 hover:bg-white"
           onClick={() => setDay((d) => addDays(d, 1))}
         >
-          Next
+          {t('common.next')}
         </button>
       </div>
 
-      {q.isLoading ? <div className="text-sm text-slate-600">Loading…</div> : null}
-      {q.isError ? (
-        <div className="text-sm text-rose-700">Failed to load schedule.</div>
-      ) : null}
+      {q.isLoading ? <div className="text-sm text-rose-800/80">{t('common.loading')}</div> : null}
+      {q.isError ? <div className="text-sm text-rose-700">{t('master.schedule.error')}</div> : null}
       {q.data && q.data.length === 0 ? (
-        <div className="text-sm text-slate-600">No appointments for this day.</div>
+        <div className="text-sm text-rose-900/75">{t('master.schedule.empty')}</div>
       ) : null}
 
       <div className="space-y-3">
         {(q.data ?? []).map((a) => (
           <Link key={a.id} to={`/staff/appointments/${a.id}`}>
-            <Card className="hover:border-slate-300">
+            <Card className="transition hover:border-rose-200 hover:shadow-studio">
               <div className="flex items-baseline justify-between gap-3">
-                <div className="text-sm font-semibold">{a.client_name}</div>
-                <div className="text-xs text-slate-600">
+                <div className="text-sm font-semibold text-rose-950">{a.client_name}</div>
+                <div className="text-xs text-rose-900/70">
                   {new Date(a.start_time).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
                   })}
                 </div>
               </div>
-              <div className="mt-1 text-xs text-slate-600">{a.client_phone}</div>
-              <div className="mt-1 text-xs text-slate-600">
+              <div className="mt-1 text-xs text-rose-900/75">{a.client_phone}</div>
+              <div className="mt-1 text-xs text-rose-900/75">
                 {(a.procedures ?? []).map((p) => p.name).join(', ') ||
-                  `Procedure #${a.procedure_id}`}
+                  t('common.procedureFallback', { id: a.procedure_id })}
               </div>
-              <div className="mt-1 flex items-center justify-between text-xs text-slate-600">
+              <div className="mt-1 flex items-center justify-between text-xs text-rose-900/75">
                 <span>
-                  ${a.price} · {a.total_duration_minutes ?? '—'} min
+                  ${a.price} · {a.total_duration_minutes ?? t('common.emDash')} {t('common.minutes')}
                 </span>
                 <span
                   className={
                     a.status === 'canceled'
-                      ? 'text-rose-700'
+                      ? 'font-medium text-rose-700'
                       : a.status === 'completed'
-                        ? 'text-emerald-700'
-                        : ''
+                        ? 'font-medium text-emerald-700'
+                        : 'font-medium text-rose-900'
                   }
                 >
-                  {a.status}
+                  {appointmentStatusLabel(t, a.status)}
                 </span>
               </div>
             </Card>

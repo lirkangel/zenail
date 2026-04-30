@@ -4,6 +4,7 @@ import { Button } from '../../../components/Button'
 import { Card } from '../../../components/Card'
 import { Page } from '../../../components/Page'
 import { useAuth } from '../../../state/auth'
+import { useT } from '../../../state/i18n'
 
 type ReqRow = {
   id: number
@@ -15,6 +16,7 @@ type ReqRow = {
 }
 
 export function ManagerRequestsPage() {
+  const t = useT()
   const { token } = useAuth()
   const qc = useQueryClient()
 
@@ -37,15 +39,23 @@ export function ManagerRequestsPage() {
   })
 
   return (
-    <Page title="Requests" subtitle="Time change requests from masters.">
-      {q.isLoading ? <div className="text-sm text-slate-600">Loading…</div> : null}
-      {q.isError ? <div className="text-sm text-rose-700">Failed to load requests.</div> : null}
+    <Page title={t('manager.requests.title')} subtitle={t('manager.requests.subtitle')}>
+      {q.isLoading ? <div className="text-sm text-rose-800/80">{t('common.loading')}</div> : null}
+      {q.isError ? <div className="text-sm text-rose-700">{t('manager.requests.error')}</div> : null}
       <div className="space-y-3">
         {(q.data ?? []).map((r) => (
-          <Card key={r.id}>
-            <div className="text-sm font-semibold">Appointment #{r.appointment_id}</div>
-            <div className="mt-1 text-xs text-slate-600">Proposed: {r.proposed_start_time}</div>
-            {r.reason ? <div className="mt-1 text-xs text-slate-600">Reason: {r.reason}</div> : null}
+          <Card key={r.id} className="transition hover:border-rose-200 hover:shadow-studio">
+            <div className="text-sm font-semibold text-rose-950">
+              {t('manager.requests.appointment', { id: r.appointment_id })}
+            </div>
+            <div className="mt-1 text-xs text-rose-900/75">
+              {t('manager.requests.proposed')}: {r.proposed_start_time}
+            </div>
+            {r.reason ? (
+              <div className="mt-1 text-xs text-rose-900/75">
+                {t('manager.requests.reason')}: {r.reason}
+              </div>
+            ) : null}
             <div className="mt-2 flex gap-2">
               <Button
                 className="flex-1"
@@ -53,7 +63,7 @@ export function ManagerRequestsPage() {
                 onClick={() => decide.mutate({ id: r.id, status: 'approved' })}
                 type="button"
               >
-                Approve
+                {t('manager.requests.approve')}
               </Button>
               <Button
                 variant="secondary"
@@ -62,7 +72,7 @@ export function ManagerRequestsPage() {
                 onClick={() => decide.mutate({ id: r.id, status: 'rejected' })}
                 type="button"
               >
-                Reject
+                {t('manager.requests.reject')}
               </Button>
             </div>
           </Card>
@@ -71,4 +81,3 @@ export function ManagerRequestsPage() {
     </Page>
   )
 }
-

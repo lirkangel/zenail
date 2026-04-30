@@ -4,9 +4,11 @@ import { apiFetch } from '../../api/client'
 import type { Appointment } from '../../api/types'
 import { Card } from '../../components/Card'
 import { Page } from '../../components/Page'
+import { appointmentStatusLabel, useT } from '../../state/i18n'
 import { getLastBooking } from '../../state/booking'
 
 export function BookSuccessPage() {
+  const t = useT()
   const [sp] = useSearchParams()
   const id = sp.get('id')
   const last = getLastBooking()
@@ -19,26 +21,30 @@ export function BookSuccessPage() {
       ),
   })
   return (
-    <Page title="Booked" subtitle="Your appointment is confirmed.">
-      <Card>
-        <div className="text-sm">
-          Appointment ID: <span className="font-semibold">{id ?? '—'}</span>
+    <Page title={t('guest.success.title')} subtitle={t('guest.success.subtitle')}>
+      <Card className="border-emerald-100/90 bg-gradient-to-br from-emerald-50/90 to-rose-50/60">
+        <div className="text-sm text-rose-950">
+          {t('guest.success.appointmentId')}: <span className="font-semibold">{id ?? t('common.emDash')}</span>
         </div>
         {q.data ? (
-          <div className="mt-3 space-y-1 text-xs text-slate-700">
+          <div className="mt-3 space-y-1 text-xs text-rose-900/85">
             <div>
-              Status: <span className="font-semibold">{q.data.status}</span>
+              {t('guest.success.status')}:{' '}
+              <span className="font-semibold">{appointmentStatusLabel(t, q.data.status)}</span>
             </div>
-            <div>Time: {new Date(q.data.start_time).toLocaleString()}</div>
-            <div>Total: ${q.data.price} / {q.data.total_duration_minutes} min</div>
-            <div>Procedures: {q.data.procedures.map((p) => p.name).join(', ')}</div>
+            <div>
+              {t('guest.success.time')}: {new Date(q.data.start_time).toLocaleString()}
+            </div>
+            <div>
+              {t('guest.success.total')}: ${q.data.price} / {q.data.total_duration_minutes} {t('common.minutes')}
+            </div>
+            <div>
+              {t('guest.success.procedures')}: {q.data.procedures.map((p) => p.name).join(', ')}
+            </div>
           </div>
         ) : null}
-        <div className="mt-2 text-xs text-slate-600">
-          Please arrive a few minutes early. If you need to change time, contact the salon.
-        </div>
+        <div className="mt-2 text-xs text-rose-900/70">{t('guest.success.footer')}</div>
       </Card>
     </Page>
   )
 }
-

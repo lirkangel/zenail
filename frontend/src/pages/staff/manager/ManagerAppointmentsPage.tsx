@@ -8,8 +8,10 @@ import { Card } from '../../../components/Card'
 import { Input } from '../../../components/Input'
 import { Page } from '../../../components/Page'
 import { useAuth } from '../../../state/auth'
+import { appointmentStatusLabel, useT } from '../../../state/i18n'
 
 export function ManagerAppointmentsPage() {
+  const t = useT()
   const { token } = useAuth()
   const [day, setDay] = useState(startOfDay(new Date()))
   const dayStr = useMemo(() => format(day, 'yyyy-MM-dd'), [day])
@@ -40,33 +42,31 @@ export function ManagerAppointmentsPage() {
   })
 
   return (
-    <Page title="Clients" subtitle={`Appointments for ${dayStr}`}>
+    <Page title={t('manager.clients.title')} subtitle={t('manager.clients.subtitle', { date: dayStr })}>
       <div className="mb-3 flex gap-2">
         <button
           type="button"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
+          className="rounded-xl border border-rose-200 bg-white/90 px-3 py-2 text-xs font-medium text-rose-800 shadow-sm"
           onClick={() => setDay((d) => addDays(d, -1))}
         >
-          Prev
+          {t('common.prev')}
         </button>
-        <div className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center text-xs">
+        <div className="flex-1 rounded-xl border border-rose-200 bg-white/90 px-3 py-2 text-center text-xs font-medium text-rose-900 shadow-sm">
           {dayStr}
         </div>
         <button
           type="button"
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs"
+          className="rounded-xl border border-rose-200 bg-white/90 px-3 py-2 text-xs font-medium text-rose-800 shadow-sm"
           onClick={() => setDay((d) => addDays(d, 1))}
         >
-          Next
+          {t('common.next')}
         </button>
       </div>
 
-      {q.isLoading ? <div className="text-sm text-slate-600">Loading…</div> : null}
-      {q.isError ? (
-        <div className="text-sm text-rose-700">Failed to load appointments.</div>
-      ) : null}
+      {q.isLoading ? <div className="text-sm text-rose-800/80">{t('common.loading')}</div> : null}
+      {q.isError ? <div className="text-sm text-rose-700">{t('manager.clients.error')}</div> : null}
       {q.data && q.data.length === 0 ? (
-        <div className="text-sm text-slate-600">No appointments for this day.</div>
+        <div className="text-sm text-rose-900/70">{t('manager.clients.empty')}</div>
       ) : null}
 
       <div className="space-y-3">
@@ -77,9 +77,7 @@ export function ManagerAppointmentsPage() {
             masters={mastersQ.data ?? []}
             pending={patch.isPending}
             onCancel={() => patch.mutate({ id: a.id, body: { status: 'canceled' } })}
-            onSave={(body) =>
-              patch.mutate({ id: a.id, body })
-            }
+            onSave={(body) => patch.mutate({ id: a.id, body })}
           />
         ))}
       </div>
@@ -100,49 +98,50 @@ function AppointmentRow({
   onCancel: () => void
   onSave: (body: { start_time: string; master_id: number }) => void
 }) {
+  const t = useT()
   const [startValue, setStartValue] = useState(toDateTimeLocal(appt.start_time))
   const [masterId, setMasterId] = useState(appt.master_id.toString())
   return (
-    <Card>
+    <Card className="transition hover:border-rose-200 hover:shadow-studio">
       <div className="flex items-baseline justify-between gap-3">
-        <div className="text-sm font-semibold">{appt.client_name}</div>
-        <div className="text-xs text-slate-600">
+        <div className="text-sm font-semibold text-rose-950">{appt.client_name}</div>
+        <div className="text-xs text-rose-900/70">
           {new Date(appt.start_time).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
           })}
         </div>
       </div>
-      <div className="mt-1 text-xs text-slate-600">{appt.client_phone}</div>
-      <div className="mt-1 text-xs text-slate-600">
-        Master: {appt.master_name ?? `#${appt.master_id}`}
+      <div className="mt-1 text-xs text-rose-900/70">{appt.client_phone}</div>
+      <div className="mt-1 text-xs text-rose-900/70">
+        {t('manager.clients.masterLine', {
+          name: String(appt.master_name ?? `#${appt.master_id}`),
+        })}
       </div>
-      <div className="mt-1 text-xs text-slate-600">
+      <div className="mt-1 text-xs text-rose-900/70">
         {(appt.procedures ?? []).map((p) => p.name).join(', ') ||
-          `Procedure #${appt.procedure_id}`}
+          t('common.procedureFallback', { id: appt.procedure_id })}
       </div>
-      <div className="mt-1 flex items-center justify-between text-xs text-slate-600">
+      <div className="mt-1 flex items-center justify-between text-xs text-rose-900/70">
         <span>
-          ${appt.price} · {appt.total_duration_minutes ?? '—'} min
+          ${appt.price} · {appt.total_duration_minutes ?? t('common.emDash')} {t('common.minutes')}
         </span>
         <span
           className={
             appt.status === 'canceled'
-              ? 'text-rose-700'
+              ? 'font-medium text-rose-700'
               : appt.status === 'completed'
-                ? 'text-emerald-700'
-                : ''
+                ? 'font-medium text-emerald-700'
+                : 'font-medium text-rose-900'
           }
         >
-          {appt.status}
+          {appointmentStatusLabel(t, appt.status)}
         </span>
       </div>
 
       <div className="mt-3 space-y-2">
         <div>
-          <label className="mb-1 block text-[11px] font-medium text-slate-700">
-            New time
-          </label>
+          <label className="mb-1 block text-[11px] font-medium text-rose-900/80">{t('manager.clients.newTime')}</label>
           <Input
             type="datetime-local"
             value={startValue}
@@ -150,11 +149,11 @@ function AppointmentRow({
           />
         </div>
         <div>
-          <label className="mb-1 block text-[11px] font-medium text-slate-700">
-            Assigned master
+          <label className="mb-1 block text-[11px] font-medium text-rose-900/80">
+            {t('manager.clients.assignedMaster')}
           </label>
           <select
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900/20"
+            className="w-full rounded-xl border border-rose-200 bg-white/90 px-3 py-2 text-sm text-rose-950 focus:outline-none focus:ring-2 focus:ring-rose-400/40"
             value={masterId}
             onChange={(e) => setMasterId(e.target.value)}
           >
@@ -177,7 +176,7 @@ function AppointmentRow({
               })
             }
           >
-            Save changes
+            {t('manager.clients.saveChanges')}
           </Button>
           <Button
             variant="secondary"
@@ -186,7 +185,7 @@ function AppointmentRow({
             type="button"
             onClick={onCancel}
           >
-            Cancel
+            {t('common.cancel')}
           </Button>
         </div>
       </div>

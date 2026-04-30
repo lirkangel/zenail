@@ -6,11 +6,13 @@ import { Card } from '../../components/Card'
 import { Input } from '../../components/Input'
 import { Page } from '../../components/Page'
 import type { Appointment } from '../../api/types'
+import { useT } from '../../state/i18n'
 import { saveLastBooking } from '../../state/booking'
 
 type FormValues = { client_name: string; client_phone: string }
 
 export function BookConfirmPage() {
+  const t = useT()
   const [sp] = useSearchParams()
   const nav = useNavigate()
   const branchId = sp.get('branch')
@@ -25,9 +27,9 @@ export function BookConfirmPage() {
   } = useForm<FormValues>({ defaultValues: { client_name: '', client_phone: '' } })
 
   return (
-    <Page title="Confirm booking" subtitle="Enter your details and confirm.">
+    <Page title={t('guest.confirm.title')} subtitle={t('guest.confirm.subtitle')}>
       {!branchId || !masterId || !procedureIds || !startTime ? (
-        <div className="text-sm text-rose-700">Missing booking information.</div>
+        <div className="text-sm text-rose-700">{t('guest.confirm.missing')}</div>
       ) : null}
 
       <Card>
@@ -51,26 +53,25 @@ export function BookConfirmPage() {
           })}
         >
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Name</label>
+            <label className="mb-1 block text-xs font-medium text-rose-900/80">{t('common.name')}</label>
             <Input {...register('client_name', { required: true })} />
             {errors.client_name ? (
-              <div className="mt-1 text-xs text-rose-600">Name is required</div>
+              <div className="mt-1 text-xs text-rose-600">{t('guest.confirm.nameRequired')}</div>
             ) : null}
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Phone</label>
+            <label className="mb-1 block text-xs font-medium text-rose-900/80">{t('common.phone')}</label>
             <Input {...register('client_phone', { required: true })} />
             {errors.client_phone ? (
-              <div className="mt-1 text-xs text-rose-600">Phone is required</div>
+              <div className="mt-1 text-xs text-rose-600">{t('guest.confirm.phoneRequired')}</div>
             ) : null}
           </div>
 
           <Button className="w-full" disabled={isSubmitting} type="submit">
-            {isSubmitting ? 'Booking…' : 'Confirm booking'}
+            {isSubmitting ? t('guest.confirm.booking') : t('guest.confirm.submit')}
           </Button>
         </form>
       </Card>
     </Page>
   )
 }
-

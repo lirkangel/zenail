@@ -6,6 +6,7 @@ import { Card } from '../../../components/Card'
 import { Input } from '../../../components/Input'
 import { Page } from '../../../components/Page'
 import { useAuth } from '../../../state/auth'
+import { useT } from '../../../state/i18n'
 
 type ProcRow = {
   id: number
@@ -26,6 +27,7 @@ type ProcedureForm = {
 }
 
 export function AdminProceduresPage() {
+  const t = useT()
   const { token } = useAuth()
   const qc = useQueryClient()
   const q = useQuery({
@@ -71,7 +73,7 @@ export function AdminProceduresPage() {
   })
 
   return (
-    <Page title="Procedures" subtitle="Manage procedure catalog.">
+    <Page title={t('admin.procedures.title')} subtitle={t('admin.procedures.subtitle')}>
       <Card className="mb-3">
         <form
           className="space-y-2"
@@ -80,20 +82,20 @@ export function AdminProceduresPage() {
             reset()
           })}
         >
-          <div className="text-sm font-semibold">Add procedure</div>
-          <Input placeholder="Name" {...register('name', { required: true })} />
-          <Input placeholder="Category (Hands, Feet, Add-ons)" {...register('category')} />
-          <Input placeholder="Description" {...register('description')} />
+          <div className="text-sm font-semibold text-rose-950">{t('admin.procedures.add')}</div>
+          <Input placeholder={t('placeholder.name')} {...register('name', { required: true })} />
+          <Input placeholder={t('placeholder.category')} {...register('category')} />
+          <Input placeholder={t('placeholder.description')} {...register('description')} />
           <div className="flex gap-2">
             <Input
-              placeholder="Duration (minutes)"
+              placeholder={t('placeholder.duration')}
               type="number"
               {...register('duration_minutes', { valueAsNumber: true, required: true })}
             />
-            <Input placeholder="Price" {...register('price', { required: true })} />
+            <Input placeholder={t('placeholder.price')} {...register('price', { required: true })} />
           </div>
           <Button className="w-full" disabled={createM.isPending} type="submit">
-            {createM.isPending ? 'Saving…' : 'Create procedure'}
+            {createM.isPending ? t('common.saving') : t('admin.procedures.create')}
           </Button>
         </form>
       </Card>
@@ -124,6 +126,7 @@ function ProcedureEditor({
   onSave: (body: ProcedureForm & { is_active: boolean }) => void
   onRemove: () => void
 }) {
+  const t = useT()
   const { register, handleSubmit } = useForm<ProcedureForm>({
     defaultValues: {
       name: procedure.name,
@@ -135,26 +138,30 @@ function ProcedureEditor({
   })
 
   return (
-    <Card className={!procedure.is_active ? 'opacity-60' : ''}>
+    <Card className={!procedure.is_active ? 'opacity-60' : 'transition hover:border-rose-200 hover:shadow-studio'}>
       <form className="space-y-2" onSubmit={handleSubmit((v) => onSave({ ...v, is_active: true }))}>
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold">Procedure #{procedure.id}</div>
-          <div className="text-xs text-slate-500">{procedure.is_active ? 'active' : 'removed'}</div>
+          <div className="text-sm font-semibold text-rose-950">
+            {t('admin.procedures.procedure', { id: procedure.id })}
+          </div>
+          <div className="text-xs text-rose-900/60">
+            {procedure.is_active ? t('admin.procedures.active') : t('admin.procedures.removed')}
+          </div>
         </div>
-        <Input placeholder="Name" {...register('name', { required: true })} />
-        <Input placeholder="Category" {...register('category')} />
-        <Input placeholder="Description" {...register('description')} />
+        <Input placeholder={t('placeholder.name')} {...register('name', { required: true })} />
+        <Input placeholder={t('placeholder.category')} {...register('category')} />
+        <Input placeholder={t('placeholder.description')} {...register('description')} />
         <div className="flex gap-2">
           <Input
-            placeholder="Duration"
+            placeholder={t('placeholder.duration')}
             type="number"
             {...register('duration_minutes', { valueAsNumber: true, required: true })}
           />
-          <Input placeholder="Price" {...register('price', { required: true })} />
+          <Input placeholder={t('placeholder.price')} {...register('price', { required: true })} />
         </div>
         <div className="flex gap-2">
           <Button className="flex-1" disabled={pending} type="submit">
-            Save
+            {t('common.save')}
           </Button>
           <Button
             variant="secondary"
@@ -163,11 +170,10 @@ function ProcedureEditor({
             onClick={onRemove}
             type="button"
           >
-            Remove
+            {t('admin.procedures.remove')}
           </Button>
         </div>
       </form>
     </Card>
   )
 }
-

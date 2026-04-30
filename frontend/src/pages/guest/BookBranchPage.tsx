@@ -4,9 +4,11 @@ import { apiFetch } from '../../api/client'
 import type { Appointment, Branch } from '../../api/types'
 import { Card } from '../../components/Card'
 import { Page } from '../../components/Page'
+import { appointmentStatusLabel, useT } from '../../state/i18n'
 import { getLastBooking } from '../../state/booking'
 
 export function BookBranchPage() {
+  const t = useT()
   const lastBooking = getLastBooking()
   const q = useQuery({
     queryKey: ['branches'],
@@ -24,13 +26,17 @@ export function BookBranchPage() {
   })
 
   return (
-    <Page title="Choose a branch" subtitle="Pick the salon location you want to visit.">
+    <Page title={t('guest.branch.title')} subtitle={t('guest.branch.subtitle')}>
       {lastQ.data ? (
-        <Card className="mb-3 border-amber-200 bg-amber-50">
-          <div className="text-sm font-semibold">Your booking is still {lastQ.data.status}</div>
+        <Card className="mb-6 border-amber-200/80 bg-gradient-to-br from-amber-50 to-rose-50/80">
+          <div className="text-sm font-semibold">
+            {t('guest.branch.lastBooking', {
+              status: appointmentStatusLabel(t, lastQ.data.status),
+            })}
+          </div>
           <div className="mt-1 text-xs text-slate-700">
             {new Date(lastQ.data.start_time).toLocaleString()} · ${lastQ.data.price} ·{' '}
-            {lastQ.data.total_duration_minutes} min
+            {lastQ.data.total_duration_minutes} {t('common.minutes')}
           </div>
           <div className="mt-1 text-xs text-slate-600">
             {lastQ.data.procedures.map((p) => p.name).join(', ')}
@@ -38,16 +44,16 @@ export function BookBranchPage() {
         </Card>
       ) : null}
 
-      {q.isLoading ? <div className="text-sm text-slate-600">Loading…</div> : null}
+      {q.isLoading ? <div className="text-sm text-rose-800/80">{t('guest.branch.loading')}</div> : null}
       {q.isError ? (
-        <div className="text-sm text-rose-700">Failed to load branches.</div>
+        <div className="text-sm text-rose-700">{t('guest.branch.error')}</div>
       ) : null}
-      <div className="space-y-4">
+      <div className="space-y-5">
         {(q.data ?? []).map((b) => (
           <Link key={b.id} to={`/book/master?branch=${b.id}`}>
-            <Card className="p-5 hover:border-slate-300">
-              <div className="text-sm font-semibold">{b.name}</div>
-              <div className="mt-1 text-xs text-slate-600">{b.address ?? '—'}</div>
+            <Card className="p-6 transition hover:-translate-y-0.5 hover:border-rose-300 hover:shadow-studio">
+              <div className="text-sm font-semibold text-rose-950">{b.name}</div>
+              <div className="mt-1 text-xs text-rose-900/70">{b.address ?? t('common.emDash')}</div>
             </Card>
           </Link>
         ))}
@@ -55,4 +61,3 @@ export function BookBranchPage() {
     </Page>
   )
 }
-

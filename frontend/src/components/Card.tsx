@@ -5,7 +5,7 @@ export function Card({ className = '', ...props }: HTMLAttributes<HTMLDivElement
     <div
       {...props}
       className={[
-        'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm',
+        'rounded-2xl border border-rose-100/90 bg-white/90 p-4 shadow-lg shadow-rose-100/40 backdrop-blur-sm',
         className,
       ].join(' ')}
     />

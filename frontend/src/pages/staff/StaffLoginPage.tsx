@@ -5,10 +5,12 @@ import { Card } from '../../components/Card'
 import { Input } from '../../components/Input'
 import { Page } from '../../components/Page'
 import { useAuth } from '../../state/auth'
+import { useT } from '../../state/i18n'
 
 type FormValues = { email: string; password: string }
 
 export function StaffLoginPage() {
+  const t = useT()
   const { login } = useAuth()
   const nav = useNavigate()
   const {
@@ -19,49 +21,46 @@ export function StaffLoginPage() {
   } = useForm<FormValues>({ defaultValues: { email: '', password: '' } })
 
   return (
-    <div className="min-h-full bg-slate-50">
-      <Page title="Staff login" subtitle="Managers, masters, and admins only.">
-        <Card>
-          <form
-            className="space-y-3"
-            onSubmit={handleSubmit(async (v) => {
-              try {
-                await login(v.email, v.password)
-                nav('/staff', { replace: true })
-              } catch (e) {
-                setError('password', { message: 'Invalid email or password' })
-              }
-            })}
-          >
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Email</label>
-              <Input type="text" autoComplete="email" {...register('email', { required: true })} />
-              {errors.email ? (
-                <div className="mt-1 text-xs text-rose-600">Email is required</div>
-              ) : null}
-            </div>
+    <Page title={t('staff.login.title')} subtitle={t('staff.login.subtitle')}>
+      <Card>
+        <form
+          className="space-y-3"
+          onSubmit={handleSubmit(async (v) => {
+            try {
+              await login(v.email, v.password)
+              nav('/staff', { replace: true })
+            } catch {
+              setError('password', { message: t('staff.login.invalid') })
+            }
+          })}
+        >
+          <div>
+            <label className="mb-1 block text-xs font-medium text-rose-900">{t('staff.login.emailLabel')}</label>
+            <Input type="text" autoComplete="email" {...register('email', { required: true })} />
+            {errors.email ? (
+              <div className="mt-1 text-xs text-rose-600">{t('staff.login.emailRequired')}</div>
+            ) : null}
+          </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700">Password</label>
-              <Input
-                type="password"
-                autoComplete="current-password"
-                {...register('password', { required: true })}
-              />
-              {errors.password ? (
-                <div className="mt-1 text-xs text-rose-600">
-                  {errors.password.message ?? 'Password is required'}
-                </div>
-              ) : null}
-            </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-rose-900">{t('staff.login.passwordLabel')}</label>
+            <Input
+              type="password"
+              autoComplete="current-password"
+              {...register('password', { required: true })}
+            />
+            {errors.password ? (
+              <div className="mt-1 text-xs text-rose-600">
+                {errors.password.message ?? t('staff.login.passwordRequired')}
+              </div>
+            ) : null}
+          </div>
 
-            <Button className="w-full" disabled={isSubmitting} type="submit">
-              {isSubmitting ? 'Signing in…' : 'Sign in'}
-            </Button>
-          </form>
-        </Card>
-      </Page>
-    </div>
+          <Button className="w-full" disabled={isSubmitting} type="submit">
+            {isSubmitting ? t('staff.login.signingIn') : t('staff.login.signIn')}
+          </Button>
+        </form>
+      </Card>
+    </Page>
   )
 }
-

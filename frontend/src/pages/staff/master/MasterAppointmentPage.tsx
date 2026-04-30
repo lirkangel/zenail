@@ -8,10 +8,12 @@ import { Card } from '../../../components/Card'
 import { Input } from '../../../components/Input'
 import { Page } from '../../../components/Page'
 import { useAuth } from '../../../state/auth'
+import { appointmentStatusLabel, useT } from '../../../state/i18n'
 
 type FormValues = { proposed_start_time: string; reason?: string }
 
 export function MasterAppointmentPage() {
+  const t = useT()
   const { id } = useParams()
   const nav = useNavigate()
   const { token } = useAuth()
@@ -45,40 +47,41 @@ export function MasterAppointmentPage() {
   })
 
   return (
-    <Page title="Appointment" subtitle={`ID ${id}`}>
+    <Page title={t('master.appt.title')} subtitle={t('master.appt.subtitle', { id: id ?? '' })}>
       <Button variant="secondary" className="mb-3" type="button" onClick={() => nav(-1)}>
-        Back
+        {t('master.appt.back')}
       </Button>
       <Card className="mb-3">
-        {apptQ.isLoading ? <div className="text-xs text-slate-600">Loading…</div> : null}
+        {apptQ.isLoading ? <div className="text-xs text-rose-800/80">{t('master.appt.loading')}</div> : null}
         {apptQ.isError ? (
-          <div className="text-xs text-rose-700">Failed to load appointment.</div>
+          <div className="text-xs text-rose-700">{t('master.appt.error')}</div>
         ) : null}
         {apptQ.data ? (
-          <div className="space-y-1 text-xs text-slate-700">
+          <div className="space-y-1 text-xs text-rose-950">
             <div>
-              <span className="text-slate-500">Client:</span> {apptQ.data.client_name} ({apptQ.data.client_phone})
+              <span className="text-rose-900/60">{t('master.appt.client')}:</span>{' '}
+              {apptQ.data.client_name} ({apptQ.data.client_phone})
             </div>
             <div>
-              <span className="text-slate-500">Time:</span>{' '}
+              <span className="text-rose-900/60">{t('master.appt.time')}:</span>{' '}
               {new Date(apptQ.data.start_time).toLocaleString()}
             </div>
             <div>
-              <span className="text-slate-500">Procedures:</span>{' '}
-              {(apptQ.data.procedures ?? []).map((p) => p.name).join(', ') || `Procedure #${apptQ.data.procedure_id}`}
+              <span className="text-rose-900/60">{t('master.appt.procedures')}:</span>{' '}
+              {(apptQ.data.procedures ?? []).map((p) => p.name).join(', ') ||
+                t('common.procedureFallback', { id: apptQ.data.procedure_id })}
             </div>
             <div>
-              <span className="text-slate-500">Total:</span>{' '}
-              ${apptQ.data.price} · {apptQ.data.total_duration_minutes ?? '—'} min
+              <span className="text-rose-900/60">{t('master.appt.total')}:</span> ${apptQ.data.price} ·{' '}
+              {apptQ.data.total_duration_minutes ?? t('common.emDash')} {t('common.minutes')}
             </div>
             <div>
-              <span className="text-slate-500">Status:</span> {apptQ.data.status}
+              <span className="text-rose-900/60">{t('master.appt.status')}:</span>{' '}
+              {appointmentStatusLabel(t, apptQ.data.status)}
             </div>
           </div>
         ) : (
-          <div className="text-xs text-slate-600">
-            This view is focused on requesting a time change (manager approval required).
-          </div>
+          <div className="text-xs text-rose-900/75">{t('master.appt.hint')}</div>
         )}
       </Card>
 
@@ -90,23 +93,18 @@ export function MasterAppointmentPage() {
           })}
         >
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">
-              Proposed start time
-            </label>
-            <Input
-              type="datetime-local"
-              {...register('proposed_start_time', { required: true })}
-            />
+            <label className="mb-1 block text-xs font-medium text-rose-900">{t('master.appt.proposedLabel')}</label>
+            <Input type="datetime-local" {...register('proposed_start_time', { required: true })} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700">Reason (optional)</label>
+            <label className="mb-1 block text-xs font-medium text-rose-900">{t('master.appt.reasonLabel')}</label>
             <Input {...register('reason')} />
           </div>
           <Button className="w-full" disabled={m.isPending} type="submit">
-            {m.isPending ? 'Sending…' : 'Request reschedule'}
+            {m.isPending ? t('master.appt.sending') : t('master.appt.submit')}
           </Button>
-          {m.isError ? <div className="text-xs text-rose-700">Failed to send request.</div> : null}
-          {m.isSuccess ? <div className="text-xs text-emerald-700">Request submitted.</div> : null}
+          {m.isError ? <div className="text-xs text-rose-700">{t('master.appt.sendError')}</div> : null}
+          {m.isSuccess ? <div className="text-xs text-emerald-700">{t('master.appt.sendOk')}</div> : null}
         </form>
       </Card>
     </Page>
@@ -118,4 +116,3 @@ function toDateTimeLocal(value: string) {
   const offsetMs = date.getTimezoneOffset() * 60_000
   return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16)
 }
-
