@@ -19,7 +19,12 @@ export function Page({
   return (
     <div className="mx-auto w-full max-w-lg px-4 py-5">
       <div className="mb-4">
-        <div className={['flex items-baseline gap-3', canGoBack ? 'justify-start' : ''].join(' ')}>
+        <div
+          className={[
+            'flex w-full items-baseline',
+            canGoBack ? 'justify-between' : 'justify-start',
+          ].join(' ')}
+        >
           {canGoBack ? (
             <button
               className="shrink-0 text-xs font-medium text-rose-700 hover:text-rose-900"
