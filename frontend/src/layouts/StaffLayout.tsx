@@ -8,11 +8,11 @@ function NavLink({ to, label }: { to: string; label: string }) {
     <Link
       to={to}
       className={[
-        'flex flex-1 flex-col items-center justify-center py-2 text-xs',
+        'flex min-w-0 flex-1 flex-col items-center justify-center px-1 py-2 text-[11px]',
         active ? 'text-slate-900' : 'text-slate-500',
       ].join(' ')}
     >
-      <span className={active ? 'font-semibold' : ''}>{label}</span>
+      <span className={['truncate', active ? 'font-semibold' : ''].join(' ')}>{label}</span>
     </Link>
   )
 }

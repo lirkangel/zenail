@@ -35,7 +35,7 @@ export function StaffLoginPage() {
           >
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-700">Email</label>
-              <Input type="email" autoComplete="email" {...register('email', { required: true })} />
+              <Input type="text" autoComplete="email" {...register('email', { required: true })} />
               {errors.email ? (
                 <div className="mt-1 text-xs text-rose-600">Email is required</div>
               ) : null}

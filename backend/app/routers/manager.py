@@ -19,13 +19,14 @@ from app.models.reschedule_request import RescheduleRequest
 from app.models.staff import Staff
 from app.schemas.manager import (
     AppointmentUpdate,
-    ManagerAppointmentOut,
     ManagerMasterOut,
     ManagerRescheduleRequestOut,
     MasterReassign,
     RescheduleRequestDecision,
     RevenueOut,
 )
+from app.schemas.public import AppointmentOut
+from app.services.appointment_out import appointment_to_out
 from app.services.scheduling import day_bounds_utc
 
 router = APIRouter(tags=["manager"])
@@ -37,12 +38,12 @@ def _require_branch(staff: Staff) -> int:
     return staff.branch_id
 
 
-@router.get("/manager/appointments", response_model=list[ManagerAppointmentOut])
+@router.get("/manager/appointments", response_model=list[AppointmentOut])
 def branch_appointments(
     date_str: str | None = Query(None, alias="date"),
     db: Session = Depends(get_db),
     staff: Staff = Depends(require_manager),
-) -> list[ManagerAppointmentOut]:
+) -> list[AppointmentOut]:
     branch_id = _require_branch(staff)
     day = date.fromisoformat(date_str) if date_str else date.today()
     day_start, day_end = day_bounds_utc(day)
@@ -57,30 +58,16 @@ def branch_appointments(
         .order_by(Appointment.start_time)
     ).all()
 
-    return [
-        ManagerAppointmentOut(
-            id=a.id,
-            branch_id=a.branch_id,
-            master_id=a.master_id,
-            procedure_id=a.procedure_id,
-            client_name=a.client_name,
-            client_phone=a.client_phone,
-            start_time=a.start_time,
-            end_time=a.end_time,
-            price=a.price,
-            status=a.status,
-        )
-        for a in appts
-    ]
+    return [appointment_to_out(a) for a in appts]
 
 
-@router.patch("/manager/appointments/{appointment_id}", response_model=ManagerAppointmentOut)
+@router.patch("/manager/appointments/{appointment_id}", response_model=AppointmentOut)
 def update_appointment(
     appointment_id: int,
     payload: AppointmentUpdate,
     db: Session = Depends(get_db),
     staff: Staff = Depends(require_manager),
-) -> ManagerAppointmentOut:
+) -> AppointmentOut:
     branch_id = _require_branch(staff)
     appt = db.get(Appointment, appointment_id)
     if not appt or appt.branch_id != branch_id:
@@ -126,18 +113,7 @@ def update_appointment(
     db.commit()
     db.refresh(appt)
 
-    return ManagerAppointmentOut(
-        id=appt.id,
-        branch_id=appt.branch_id,
-        master_id=appt.master_id,
-        procedure_id=appt.procedure_id,
-        client_name=appt.client_name,
-        client_phone=appt.client_phone,
-        start_time=appt.start_time,
-        end_time=appt.end_time,
-        price=appt.price,
-        status=appt.status,
-    )
+    return appointment_to_out(appt)
 
 
 @router.get("/manager/masters", response_model=list[ManagerMasterOut])

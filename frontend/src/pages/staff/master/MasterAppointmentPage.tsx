@@ -60,6 +60,14 @@ export function MasterAppointmentPage() {
               {new Date(apptQ.data.start_time).toLocaleString()}
             </div>
             <div>
+              <span className="text-slate-500">Procedures:</span>{' '}
+              {(apptQ.data.procedures ?? []).map((p) => p.name).join(', ') || `Procedure #${apptQ.data.procedure_id}`}
+            </div>
+            <div>
+              <span className="text-slate-500">Total:</span>{' '}
+              ${apptQ.data.price} · {apptQ.data.total_duration_minutes ?? '—'} min
+            </div>
+            <div>
               <span className="text-slate-500">Status:</span> {apptQ.data.status}
             </div>
           </div>
