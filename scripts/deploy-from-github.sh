@@ -8,6 +8,11 @@ git fetch origin main --depth=1
 git reset --hard origin/main
 echo "[deploy] Synced /opt/zenail to origin/main"
 
+# git reset doesn't remove untracked folders from previous runs
+rm -rf .venv || true
+find . -type d -name "__pycache__" -prune -exec rm -rf {} + || true
+echo "[deploy] Cleaned .venv and __pycache__"
+
 FRONTEND_PORT="${FRONTEND_PORT:-3002}"
 BACKEND_PORT="${BACKEND_PORT:-8001}"
 PUBLIC_API_BASE_URL="${PUBLIC_API_BASE_URL:-http://10.0.0.11:8001}"
