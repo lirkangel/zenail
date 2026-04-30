@@ -25,6 +25,9 @@ export function Page({
             canGoBack ? 'justify-between' : 'justify-start',
           ].join(' ')}
         >
+          <h1 className="min-w-0 bg-gradient-to-r from-rose-700 via-pink-600 to-fuchsia-600 bg-clip-text text-xl font-semibold tracking-tight text-transparent">
+            {title}
+          </h1>
           {canGoBack ? (
             <button
               className="shrink-0 text-xs font-medium text-rose-700 hover:text-rose-900"
@@ -34,9 +37,6 @@ export function Page({
               {t('common.back')}
             </button>
           ) : null}
-          <h1 className="min-w-0 bg-gradient-to-r from-rose-700 via-pink-600 to-fuchsia-600 bg-clip-text text-xl font-semibold tracking-tight text-transparent">
-            {title}
-          </h1>
         </div>
         {subtitle ? <p className="mt-1 text-sm text-rose-900/70">{subtitle}</p> : null}
       </div>
