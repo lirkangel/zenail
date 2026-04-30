@@ -23,7 +23,7 @@ export function BookMasterPage() {
       {q.isError ? <div className="text-sm text-rose-700">{t('guest.master.error')}</div> : null}
       <div className="space-y-4">
         {(q.data ?? []).map((m) => (
-          <Link key={m.id} to={`/book/procedure?branch=${branchId}&master=${m.id}`}>
+          <Link key={m.id} to={`/book/procedure?branch=${branchId}&master=${m.id}`} className="block">
             <Card className="p-5 transition hover:border-rose-300 hover:shadow-studio">
               <div className="text-sm font-semibold text-rose-950">{m.full_name}</div>
             </Card>
