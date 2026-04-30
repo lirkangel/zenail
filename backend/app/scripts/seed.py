@@ -1,0 +1,210 @@
+from __future__ import annotations
+
+from datetime import datetime, time, timedelta, timezone
+from decimal import Decimal
+
+from sqlalchemy import select
+
+from app.core.security import hash_password
+from app.db.session import SessionLocal
+from app.models.appointment import Appointment
+from app.models.branch import Branch
+from app.models.enums import AppointmentStatus, StaffRole
+from app.models.master_procedure import MasterProcedure
+from app.models.procedure import Procedure
+from app.models.staff import Staff
+
+
+def _ensure_branch(db, *, name: str, open_time: time, close_time: time, address: str) -> Branch:
+    b = db.scalar(select(Branch).where(Branch.name == name))
+    if b:
+        return b
+    b = Branch(name=name, open_time=open_time, close_time=close_time, address=address)
+    db.add(b)
+    db.flush()
+    return b
+
+
+def _ensure_staff(
+    db,
+    *,
+    email: str,
+    full_name: str,
+    role: StaffRole,
+    branch_id: int | None,
+    password: str,
+) -> Staff:
+    s = db.scalar(select(Staff).where(Staff.email == email))
+    if s:
+        return s
+    s = Staff(
+        email=email,
+        full_name=full_name,
+        role=role,
+        branch_id=branch_id,
+        password_hash=hash_password(password),
+        is_active=True,
+    )
+    db.add(s)
+    db.flush()
+    return s
+
+
+def _ensure_procedure(db, *, name: str, duration: int, price: Decimal) -> Procedure:
+    p = db.scalar(select(Procedure).where(Procedure.name == name))
+    if p:
+        return p
+    p = Procedure(name=name, duration_minutes=duration, price=price, is_active=True)
+    db.add(p)
+    db.flush()
+    return p
+
+
+def _link_master_proc(db, *, master_id: int, procedure_id: int) -> None:
+    exists = db.scalar(
+        select(MasterProcedure).where(
+            MasterProcedure.master_id == master_id,
+            MasterProcedure.procedure_id == procedure_id,
+        )
+    )
+    if exists:
+        return
+    db.add(MasterProcedure(master_id=master_id, procedure_id=procedure_id))
+
+
+def run() -> None:
+    db = SessionLocal()
+    try:
+        branch_a = _ensure_branch(
+            db,
+            name="Zenail Central",
+            open_time=time(9, 0),
+            close_time=time(20, 0),
+            address="1 Main Street",
+        )
+        branch_b = _ensure_branch(
+            db,
+            name="Zenail Riverside",
+            open_time=time(10, 0),
+            close_time=time(21, 0),
+            address="99 River Road",
+        )
+
+        _ensure_staff(
+            db,
+            email="admin@zenail.local",
+            full_name="Admin",
+            role=StaffRole.admin,
+            branch_id=None,
+            password="admin123",
+        )
+        _ensure_staff(
+            db,
+            email="manager.a@zenail.local",
+            full_name="Manager Central",
+            role=StaffRole.manager,
+            branch_id=branch_a.id,
+            password="manager123",
+        )
+        _ensure_staff(
+            db,
+            email="manager.b@zenail.local",
+            full_name="Manager Riverside",
+            role=StaffRole.manager,
+            branch_id=branch_b.id,
+            password="manager123",
+        )
+
+        masters_a = [
+            _ensure_staff(
+                db,
+                email=f"master.a{i}@zenail.local",
+                full_name=f"Master A{i}",
+                role=StaffRole.master,
+                branch_id=branch_a.id,
+                password="master123",
+            )
+            for i in range(1, 4)
+        ]
+        masters_b = [
+            _ensure_staff(
+                db,
+                email=f"master.b{i}@zenail.local",
+                full_name=f"Master B{i}",
+                role=StaffRole.master,
+                branch_id=branch_b.id,
+                password="master123",
+            )
+            for i in range(1, 4)
+        ]
+
+        procs = [
+            _ensure_procedure(db, name="Manicure (Classic)", duration=60, price=Decimal("25.00")),
+            _ensure_procedure(db, name="Manicure (Gel)", duration=75, price=Decimal("35.00")),
+            _ensure_procedure(db, name="Pedicure (Classic)", duration=75, price=Decimal("32.00")),
+            _ensure_procedure(db, name="Pedicure (Spa)", duration=90, price=Decimal("45.00")),
+            _ensure_procedure(db, name="Nail Art (Add-on)", duration=30, price=Decimal("15.00")),
+            _ensure_procedure(db, name="Removal (Gel)", duration=30, price=Decimal("10.00")),
+        ]
+
+        for m in masters_a + masters_b:
+            _link_master_proc(db, master_id=m.id, procedure_id=procs[0].id)
+            _link_master_proc(db, master_id=m.id, procedure_id=procs[1].id)
+            _link_master_proc(db, master_id=m.id, procedure_id=procs[2].id)
+        for m in masters_a:
+            _link_master_proc(db, master_id=m.id, procedure_id=procs[3].id)
+        for m in masters_b:
+            _link_master_proc(db, master_id=m.id, procedure_id=procs[4].id)
+            _link_master_proc(db, master_id=m.id, procedure_id=procs[5].id)
+
+        now = datetime.now(timezone.utc)
+        today = now.date()
+        start_base = datetime(today.year, today.month, today.day, 11, 0, tzinfo=timezone.utc)
+
+        def ensure_appt(
+            branch_id: int,
+            master_id: int,
+            procedure: Procedure,
+            i: int,
+            status: AppointmentStatus,
+        ) -> None:
+            start = start_base + timedelta(hours=i * 2)
+            end = start + timedelta(minutes=procedure.duration_minutes)
+            exists = db.scalar(
+                select(Appointment).where(
+                    Appointment.master_id == master_id,
+                    Appointment.start_time == start,
+                    Appointment.procedure_id == procedure.id,
+                )
+            )
+            if exists:
+                return
+            db.add(
+                Appointment(
+                    branch_id=branch_id,
+                    master_id=master_id,
+                    procedure_id=procedure.id,
+                    client_name=f"Client {i}",
+                    client_phone=f"+100000000{i}",
+                    start_time=start,
+                    end_time=end,
+                    price=procedure.price,
+                    status=status,
+                )
+            )
+
+        for i, m in enumerate(masters_a, start=1):
+            ensure_appt(branch_a.id, m.id, procs[0], i, AppointmentStatus.scheduled)
+            ensure_appt(branch_a.id, m.id, procs[2], i + 1, AppointmentStatus.completed)
+        for i, m in enumerate(masters_b, start=1):
+            ensure_appt(branch_b.id, m.id, procs[1], i, AppointmentStatus.scheduled)
+
+        db.commit()
+        print("Seed complete.")
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    run()
+

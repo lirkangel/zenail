@@ -1,0 +1,14 @@
+.DS_Store
+node_modules
+dist
+.env
+__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.venv
+.python-version
+*.sqlite
+backend/alembic/versions/*.pyc
+backend/alembic/versions/__pycache__/
+
