@@ -1,10 +1,10 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from app.models.enums import StaffRole
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
@@ -18,7 +18,7 @@ class LoginResponse(BaseModel):
 class MeResponse(BaseModel):
     id: int
     full_name: str
-    email: EmailStr
+    email: str
     role: StaffRole
     branch_id: int | None
 

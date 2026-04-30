@@ -26,10 +26,26 @@ def seed_min(db):
     )
     db.add(master)
     db.flush()
-    proc = Procedure(name="P1", duration_minutes=60, price=Decimal("10.00"), is_active=True)
-    db.add(proc)
+    proc = Procedure(
+        name="P1",
+        duration_minutes=60,
+        price=Decimal("10.00"),
+        description="Classic nail care",
+        category="Hands",
+        is_active=True,
+    )
+    proc2 = Procedure(
+        name="P2",
+        duration_minutes=30,
+        price=Decimal("5.00"),
+        description="Nail art detail",
+        category="Add-ons",
+        is_active=True,
+    )
+    db.add_all([proc, proc2])
     db.flush()
     db.add(MasterProcedure(master_id=master.id, procedure_id=proc.id))
+    db.add(MasterProcedure(master_id=master.id, procedure_id=proc2.id))
     db.commit()
     return branch, master, proc
 
@@ -62,6 +78,103 @@ def test_booking_conflict_returns_409(client, db_session):
         },
     )
     assert r2.status_code == 409
+
+
+def test_multi_procedure_booking_sums_duration_and_price_and_can_be_looked_up(client, db_session):
+    branch, master, proc = seed_min(db_session)
+    proc2 = db_session.scalar(select(Procedure).where(Procedure.name == "P2"))
+
+    start = datetime(2030, 1, 1, 10, 0, tzinfo=timezone.utc)
+    r = client.post(
+        "/api/appointments",
+        json={
+            "branch_id": branch.id,
+            "master_id": master.id,
+            "procedure_ids": [proc.id, proc2.id],
+            "client_name": "A",
+            "client_phone": "555",
+            "start_time": start.isoformat(),
+        },
+    )
+    r.raise_for_status()
+    data = r.json()
+    assert data["price"] == "15.00"
+    assert data["end_time"].startswith("2030-01-01T11:30:00")
+    assert [p["id"] for p in data["procedures"]] == [proc.id, proc2.id]
+
+    lookup = client.get(f"/api/appointments/{data['id']}?client_phone=555")
+    lookup.raise_for_status()
+    assert lookup.json()["status"] == "scheduled"
+
+
+def test_public_booking_rejects_past_dates(client, db_session):
+    branch, master, proc = seed_min(db_session)
+
+    r = client.get(f"/api/availability?master_id={master.id}&procedure_ids={proc.id}&date=2000-01-01")
+    assert r.status_code == 422
+
+    r = client.post(
+        "/api/appointments",
+        json={
+            "branch_id": branch.id,
+            "master_id": master.id,
+            "procedure_ids": [proc.id],
+            "client_name": "A",
+            "client_phone": "555",
+            "start_time": datetime(2000, 1, 1, 10, 0, tzinfo=timezone.utc).isoformat(),
+        },
+    )
+    assert r.status_code == 422
+
+
+def test_branch_non_working_day_blocks_availability(client, db_session):
+    branch, master, proc = seed_min(db_session)
+    admin = Staff(
+        full_name="Admin",
+        email="admin@example.com",
+        role=StaffRole.admin,
+        branch_id=None,
+        password_hash=hash_password("admin123"),
+        is_active=True,
+    )
+    db_session.add(admin)
+    db_session.commit()
+    token = client.post("/api/auth/login", json={"email": admin.email, "password": "admin123"}).json()[
+        "access_token"
+    ]
+    day = "2030-01-02"
+
+    r = client.post(
+        f"/api/admin/branches/{branch.id}/non-working-days",
+        json={"day": day, "reason": "Holiday"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    r.raise_for_status()
+
+    r = client.get(f"/api/availability?master_id={master.id}&procedure_ids={proc.id}&date={day}")
+    r.raise_for_status()
+    assert r.json()["slots"] == []
+
+
+def test_seed_style_local_demo_email_can_login_and_load_me(client, db_session):
+    staff = Staff(
+        full_name="Demo Admin",
+        email="admin@zenail.local",
+        role=StaffRole.admin,
+        branch_id=None,
+        password_hash=hash_password("admin123"),
+        is_active=True,
+    )
+    db_session.add(staff)
+    db_session.commit()
+
+    r = client.post("/api/auth/login", json={"email": staff.email, "password": "admin123"})
+    r.raise_for_status()
+    token = r.json()["access_token"]
+
+    me = client.get("/api/me", headers={"Authorization": f"Bearer {token}"})
+    me.raise_for_status()
+    assert me.json()["email"] == "admin@zenail.local"
 
 
 def test_revenue_sums_completed_only(client, db_session):

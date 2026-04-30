@@ -54,7 +54,7 @@ class StaffUpdate(BaseModel):
 class StaffAdminOut(BaseModel):
     id: int
     full_name: str
-    email: EmailStr
+    email: str
     phone: str | None = None
     role: StaffRole
     branch_id: int | None = None
