@@ -54,7 +54,7 @@ export function MasterSchedulePage() {
       <div className="space-y-3">
         {(q.data ?? []).map((a) => (
           <Link key={a.id} to={`/staff/appointments/${a.id}`}>
-            <Card className="transition hover:border-rose-200 hover:shadow-studio">
+            <Card className="space-y-2.5 transition hover:border-rose-200 hover:shadow-studio">
               <div className="flex items-baseline justify-between gap-3">
                 <div className="text-sm font-semibold text-rose-950">{a.client_name}</div>
                 <div className="text-xs text-rose-900/70">
@@ -64,12 +64,12 @@ export function MasterSchedulePage() {
                   })}
                 </div>
               </div>
-              <div className="mt-1 text-xs text-rose-900/75">{a.client_phone}</div>
-              <div className="mt-1 text-xs text-rose-900/75">
+              <div className="text-xs text-rose-900/75">{a.client_phone}</div>
+              <div className="text-xs leading-5 text-rose-900/75">
                 {(a.procedures ?? []).map((p) => p.name).join(', ') ||
                   t('common.procedureFallback', { id: a.procedure_id })}
               </div>
-              <div className="mt-1 flex items-center justify-between text-xs text-rose-900/75">
+              <div className="flex items-center justify-between gap-3 pt-1 text-xs text-rose-900/75">
                 <span>
                   ${a.price} · {a.total_duration_minutes ?? t('common.emDash')} {t('common.minutes')}
                 </span>
