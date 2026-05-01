@@ -17,6 +17,11 @@ type StaffRow = {
   is_active: boolean
 }
 
+type BranchRow = {
+  id: number
+  name: string
+}
+
 export function AdminStaffPage() {
   const t = useT()
   const { token } = useAuth()
@@ -25,6 +30,11 @@ export function AdminStaffPage() {
     queryKey: ['adminStaff'],
     queryFn: () => apiFetch<StaffRow[]>('/api/admin/staff', { token: token ?? undefined }),
   })
+  const branchesQ = useQuery({
+    queryKey: ['adminBranchesForStaff'],
+    queryFn: () => apiFetch<BranchRow[]>('/api/admin/branches', { token: token ?? undefined }),
+  })
+  const branchNameById = new Map((branchesQ.data ?? []).map((branch) => [branch.id, branch.name]))
 
   const createM = useMutation({
     mutationFn: (body: unknown) =>
@@ -77,7 +87,17 @@ export function AdminStaffPage() {
               <option value="manager">{t('role.manager')}</option>
               <option value="admin">{t('role.admin')}</option>
             </select>
-            <Input placeholder={t('placeholder.branchId')} {...register('branch_id')} />
+            <select
+              className="w-full rounded-xl border border-rose-200/80 bg-white/90 px-3 py-2 text-sm text-rose-950 shadow-sm"
+              {...register('branch_id')}
+            >
+              <option value="">{t('admin.staff.noBranch')}</option>
+              {(branchesQ.data ?? []).map((branch) => (
+                <option key={branch.id} value={branch.id.toString()}>
+                  {branch.name}
+                </option>
+              ))}
+            </select>
           </div>
           <Input placeholder={t('placeholder.password')} type="password" {...register('password', { required: true })} />
           <Button className="w-full" disabled={createM.isPending} type="submit">
@@ -94,6 +114,11 @@ export function AdminStaffPage() {
               <div className="text-xs font-medium text-rose-900/70">{t(`role.${s.role}`)}</div>
             </div>
             <div className="mt-1 text-xs text-rose-900/75">{s.email}</div>
+            <div className="mt-1 text-xs text-rose-900/65">
+              {t('admin.staff.branchLine', {
+                branch: s.branch_id ? (branchNameById.get(s.branch_id) ?? `#${s.branch_id}`) : t('admin.staff.noBranch'),
+              })}
+            </div>
           </Card>
         ))}
       </div>

@@ -122,8 +122,8 @@ export const VI: Record<string, string> = {
   'manager.masters.title': 'Thợ',
   'manager.masters.subtitle': 'Thợ đang làm tại chi nhánh này.',
   'manager.masters.error': 'Không tải được danh sách thợ.',
-  'manager.masters.reassignLabel': 'Gán lại ID chi nhánh (để trống nếu bỏ gán)',
-  'manager.masters.saveAssignment': 'Lưu phân công',
+  'manager.masters.branchLabel': 'Chi nhánh: {branch}',
+  'manager.masters.branchLocked': 'Quản lý chỉ xem thợ trong chi nhánh của mình.',
 
   'manager.requests.title': 'Yêu cầu',
   'manager.requests.subtitle': 'Yêu cầu đổi giờ từ thợ.',
@@ -174,6 +174,8 @@ export const VI: Record<string, string> = {
   'admin.staff.subtitle': 'Quản lý tài khoản và vai trò.',
   'admin.staff.add': 'Thêm nhân viên',
   'admin.staff.create': 'Tạo nhân viên',
+  'admin.staff.branchLine': 'Chi nhánh: {branch}',
+  'admin.staff.noBranch': 'Không gán chi nhánh',
 
   'admin.procedures.title': 'Dịch vụ',
   'admin.procedures.subtitle': 'Quản lý danh mục dịch vụ.',
@@ -191,7 +193,6 @@ export const VI: Record<string, string> = {
   'placeholder.fullName': 'Họ tên',
   'placeholder.email': 'Email',
   'placeholder.password': 'Mật khẩu',
-  'placeholder.branchId': 'ID chi nhánh (tuỳ chọn)',
   'placeholder.name': 'Tên',
   'placeholder.address': 'Địa chỉ',
   'placeholder.open': 'Mở cửa (HH:MM:SS)',

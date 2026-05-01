@@ -1,35 +1,25 @@
-import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
-import { Button } from '../../../components/Button'
 import { Card } from '../../../components/Card'
-import { Input } from '../../../components/Input'
 import { Page } from '../../../components/Page'
 import { useAuth } from '../../../state/useAuth'
 import { useT } from '../../../state/useT'
 
 type MasterRow = { id: number; full_name: string; branch_id: number | null }
+type BranchRow = { id: number; name: string }
 
 export function ManagerMastersPage() {
   const t = useT()
   const { token } = useAuth()
-  const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['managerMasters'],
     queryFn: () => apiFetch<MasterRow[]>('/api/manager/masters', { token: token ?? undefined }),
   })
-
-  const m = useMutation({
-    mutationFn: (args: { id: number; branch_id: number | null }) =>
-      apiFetch(`/api/manager/masters/${args.id}`, {
-        method: 'PATCH',
-        token: token ?? undefined,
-        body: JSON.stringify({ branch_id: args.branch_id }),
-      }),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['managerMasters'] })
-    },
+  const branchesQ = useQuery({
+    queryKey: ['managerBranches'],
+    queryFn: () => apiFetch<BranchRow[]>('/api/branches'),
   })
+  const branchNameById = new Map((branchesQ.data ?? []).map((branch) => [branch.id, branch.name]))
 
   return (
     <Page title={t('manager.masters.title')} subtitle={t('manager.masters.subtitle')}>
@@ -40,8 +30,7 @@ export function ManagerMastersPage() {
           <MasterRowCard
             key={row.id}
             row={row}
-            pending={m.isPending}
-            onSave={(branchId) => m.mutate({ id: row.id, branch_id: branchId })}
+            branchName={row.branch_id ? (branchNameById.get(row.branch_id) ?? t('common.emDash')) : t('common.emDash')}
           />
         ))}
       </div>
@@ -51,34 +40,19 @@ export function ManagerMastersPage() {
 
 function MasterRowCard({
   row,
-  pending,
-  onSave,
+  branchName,
 }: {
   row: MasterRow
-  pending: boolean
-  onSave: (branchId: number | null) => void
+  branchName: string
 }) {
   const t = useT()
-  const [value, setValue] = useState(row.branch_id?.toString() ?? '')
   return (
     <Card className="transition hover:border-rose-200 hover:shadow-studio">
       <div className="text-sm font-semibold text-rose-950">{row.full_name}</div>
-      <div className="mt-3 space-y-2">
-        <div>
-          <label className="mb-1 block text-[11px] font-medium text-rose-900/80">
-            {t('manager.masters.reassignLabel')}
-          </label>
-          <Input value={value} onChange={(e) => setValue(e.target.value)} />
-        </div>
-        <Button
-          className="w-full"
-          disabled={pending}
-          type="button"
-          onClick={() => onSave(value.trim() ? Number(value.trim()) : null)}
-        >
-          {t('manager.masters.saveAssignment')}
-        </Button>
+      <div className="mt-2 text-xs text-rose-900/75">
+        {t('manager.masters.branchLabel', { branch: branchName })}
       </div>
+      <div className="mt-3 text-xs text-rose-900/65">{t('manager.masters.branchLocked')}</div>
     </Card>
   )
 }
