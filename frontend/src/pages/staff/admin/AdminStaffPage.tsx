@@ -13,6 +13,7 @@ type StaffRow = {
   id: number
   full_name: string
   email: string
+  phone?: string | null
   role: 'master' | 'manager' | 'admin'
   branch_id: number | null
   is_active: boolean
@@ -49,11 +50,28 @@ export function AdminStaffPage() {
     },
   })
   const updateM = useMutation({
-    mutationFn: (args: { id: number; branch_id: number | null }) =>
+    mutationFn: (args: {
+      id: number
+      full_name?: string
+      email?: string
+      phone?: string | null
+      role?: 'master' | 'manager' | 'admin'
+      branch_id?: number | null
+      is_active?: boolean
+      password?: string
+    }) =>
       apiFetch(`/api/admin/staff/${args.id}`, {
         method: 'PATCH',
         token: token ?? undefined,
-        body: JSON.stringify({ branch_id: args.branch_id }),
+        body: JSON.stringify({
+          full_name: args.full_name,
+          email: args.email,
+          phone: args.phone,
+          role: args.role,
+          branch_id: args.branch_id,
+          is_active: args.is_active,
+          password: args.password,
+        }),
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['adminStaff'] })
@@ -126,7 +144,7 @@ export function AdminStaffPage() {
             branchName={s.branch_id ? (branchNameById.get(s.branch_id) ?? `#${s.branch_id}`) : t('admin.staff.noBranch')}
             branches={branchesQ.data ?? []}
             pending={updateM.isPending}
-            onSave={(branchId) => updateM.mutate({ id: s.id, branch_id: branchId })}
+            onSave={(body) => updateM.mutate({ id: s.id, ...body })}
           />
         ))}
       </div>
@@ -145,10 +163,25 @@ function StaffRowCard({
   branchName: string
   branches: BranchRow[]
   pending: boolean
-  onSave: (branchId: number | null) => void
+  onSave: (body: {
+    full_name: string
+    email: string
+    phone: string | null
+    role: 'master' | 'manager' | 'admin'
+    branch_id: number | null
+    is_active: boolean
+    password?: string
+  }) => void
 }) {
   const t = useT()
-  const [value, setValue] = useState(row.branch_id?.toString() ?? '')
+  const [isEditing, setIsEditing] = useState(false)
+  const [fullName, setFullName] = useState(row.full_name)
+  const [email, setEmail] = useState(row.email)
+  const [phone, setPhone] = useState(row.phone ?? '')
+  const [role, setRole] = useState<StaffRow['role']>(row.role)
+  const [branchValue, setBranchValue] = useState(row.branch_id?.toString() ?? '')
+  const [isActive, setIsActive] = useState(row.is_active)
+  const [password, setPassword] = useState('')
 
   return (
     <Card className="transition hover:border-rose-200 hover:shadow-studio">
@@ -157,30 +190,96 @@ function StaffRowCard({
         <div className="text-xs font-medium text-rose-900/70">{t(`role.${row.role}`)}</div>
       </div>
       <div className="mt-1 text-xs text-rose-900/75">{row.email}</div>
+      {row.phone ? <div className="mt-1 text-xs text-rose-900/65">{row.phone}</div> : null}
       <div className="mt-1 text-xs text-rose-900/65">
         {t('admin.staff.branchLine', { branch: branchName })}
       </div>
-      <div className="mt-3 flex gap-2">
-        <select
-          className="w-full rounded-xl border border-rose-200/80 bg-white/90 px-3 py-2 text-sm text-rose-950 shadow-sm"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        >
-          <option value="">{t('admin.staff.noBranch')}</option>
-          {branches.map((branch) => (
-            <option key={branch.id} value={branch.id.toString()}>
-              {branch.name}
-            </option>
-          ))}
-        </select>
-        <Button
-          type="button"
-          disabled={pending}
-          onClick={() => onSave(value.trim() ? Number(value.trim()) : null)}
-        >
-          {pending ? t('common.saving') : t('common.save')}
-        </Button>
+      <div className="mt-1 text-xs text-rose-900/65">
+        {row.is_active ? t('admin.staff.active') : t('admin.staff.inactive')}
       </div>
+      {!isEditing ? (
+        <div className="mt-3">
+          <Button type="button" variant="secondary" onClick={() => setIsEditing(true)}>
+            {t('admin.staff.edit')}
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-3 space-y-2">
+          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input placeholder={t('placeholder.phone')} value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <div className="flex gap-2">
+            <select
+              className="w-full rounded-xl border border-rose-200/80 bg-white/90 px-3 py-2 text-sm text-rose-950 shadow-sm"
+              value={role}
+              onChange={(e) => setRole(e.target.value as StaffRow['role'])}
+            >
+              <option value="master">{t('role.master')}</option>
+              <option value="manager">{t('role.manager')}</option>
+              <option value="admin">{t('role.admin')}</option>
+            </select>
+            <select
+              className="w-full rounded-xl border border-rose-200/80 bg-white/90 px-3 py-2 text-sm text-rose-950 shadow-sm"
+              value={branchValue}
+              onChange={(e) => setBranchValue(e.target.value)}
+            >
+              <option value="">{t('admin.staff.noBranch')}</option>
+              {branches.map((branch) => (
+                <option key={branch.id} value={branch.id.toString()}>
+                  {branch.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Input
+            placeholder={t('admin.staff.passwordOptional')}
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <label className="flex items-center gap-2 text-xs text-rose-900/75">
+            <input checked={isActive} type="checkbox" onChange={(e) => setIsActive(e.target.checked)} />
+            <span>{t('admin.staff.activeToggle')}</span>
+          </label>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                onSave({
+                  full_name: fullName.trim(),
+                  email: email.trim(),
+                  phone: phone.trim() || null,
+                  role,
+                  branch_id: branchValue.trim() ? Number(branchValue.trim()) : null,
+                  is_active: isActive,
+                  ...(password.trim() ? { password: password.trim() } : {}),
+                })
+                setIsEditing(false)
+                setPassword('')
+              }}
+            >
+              {pending ? t('common.saving') : t('common.save')}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setIsEditing(false)
+                setFullName(row.full_name)
+                setEmail(row.email)
+                setPhone(row.phone ?? '')
+                setRole(row.role)
+                setBranchValue(row.branch_id?.toString() ?? '')
+                setIsActive(row.is_active)
+                setPassword('')
+              }}
+            >
+              {t('common.cancel')}
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }
