@@ -70,6 +70,11 @@ export const VI: Record<string, string> = {
   'guest.confirm.booking': 'Đang đặt…',
   'guest.confirm.nameRequired': 'Vui lòng nhập tên',
   'guest.confirm.phoneRequired': 'Vui lòng nhập số điện thoại',
+  'guest.confirm.successTitle': 'Đặt lịch thành công',
+  'guest.confirm.successMessage': 'Lịch hẹn của bạn đã được xác nhận.',
+  'guest.confirm.viewBooking': 'Xem lịch hẹn',
+  'guest.confirm.errorTitle': 'Không thể đặt lịch',
+  'guest.confirm.submitError': 'Có lỗi khi xác nhận lịch hẹn.',
 
   'guest.success.title': 'Đã đặt lịch',
   'guest.success.subtitle': 'Lịch hẹn của bạn đã được xác nhận.',
@@ -294,6 +299,11 @@ export const EN: Record<string, string> = {
   'guest.confirm.booking': 'Booking…',
   'guest.confirm.nameRequired': 'Please enter a name',
   'guest.confirm.phoneRequired': 'Please enter a phone number',
+  'guest.confirm.successTitle': 'Booking confirmed',
+  'guest.confirm.successMessage': 'Your appointment has been confirmed.',
+  'guest.confirm.viewBooking': 'View booking',
+  'guest.confirm.errorTitle': 'Booking failed',
+  'guest.confirm.submitError': 'There was a problem confirming your booking.',
 
   'guest.success.title': 'Booking confirmed',
   'guest.success.subtitle': 'Your appointment has been confirmed.',
