@@ -28,6 +28,7 @@ export function StaffLayout() {
     role === 'master'
       ? [
           { to: '/staff/schedule', label: t('staff.tab.schedule') },
+          { to: '/staff/account', label: t('staff.tab.account') },
           { to: '/staff', label: t('staff.tab.home') },
         ]
       : role === 'manager'
@@ -37,12 +38,14 @@ export function StaffLayout() {
             { to: '/staff/masters', label: t('staff.tab.masters') },
             { to: '/staff/requests', label: t('staff.tab.requests') },
             { to: '/staff/revenue', label: t('staff.tab.revenue') },
+            { to: '/staff/account', label: t('staff.tab.account') },
           ]
         : [
             { to: '/staff/admin/branches', label: t('staff.tab.branches') },
             { to: '/staff/admin/staff', label: t('staff.tab.staff') },
             { to: '/staff/admin/procedures', label: t('staff.tab.procedures') },
             { to: '/staff/admin/revenue', label: t('staff.tab.revenue') },
+            { to: '/staff/account', label: t('staff.tab.account') },
           ]
 
   return (

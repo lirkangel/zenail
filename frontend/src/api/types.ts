@@ -68,6 +68,7 @@ export type Me = {
   id: number
   full_name: string
   email: string
+  phone?: string | null
   role: StaffRole
   branch_id: number | null
 }

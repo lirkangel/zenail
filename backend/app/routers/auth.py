@@ -3,10 +3,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_staff
-from app.core.security import create_access_token, verify_password
+from app.core.security import create_access_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models.staff import Staff
-from app.schemas.auth import LoginRequest, LoginResponse, MeResponse
+from app.schemas.auth import LoginRequest, LoginResponse, MeResponse, MeUpdateRequest
 
 router = APIRouter(tags=["auth"])
 
@@ -29,7 +29,37 @@ def me(staff: Staff = Depends(get_current_staff)) -> MeResponse:
         id=staff.id,
         full_name=staff.full_name,
         email=staff.email,
+        phone=staff.phone,
         role=staff.role,
         branch_id=staff.branch_id,
     )
 
+
+@router.patch("/me", response_model=MeResponse)
+def update_me(
+    payload: MeUpdateRequest,
+    db: Session = Depends(get_db),
+    staff: Staff = Depends(get_current_staff),
+) -> MeResponse:
+    data = payload.model_dump(exclude_unset=True)
+    if "email" in data and data["email"] is not None:
+        data["email"] = str(data["email"]).lower()
+        existing = db.scalar(select(Staff).where(Staff.email == data["email"], Staff.id != staff.id))
+        if existing:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already in use")
+    if "password" in data:
+        if data["password"]:
+            staff.password_hash = hash_password(data["password"])
+        data.pop("password")
+    for key, value in data.items():
+        setattr(staff, key, value)
+    db.commit()
+    db.refresh(staff)
+    return MeResponse(
+        id=staff.id,
+        full_name=staff.full_name,
+        email=staff.email,
+        phone=staff.phone,
+        role=staff.role,
+        branch_id=staff.branch_id,
+    )

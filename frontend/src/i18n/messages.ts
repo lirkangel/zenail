@@ -92,6 +92,7 @@ export const VI: Record<string, string> = {
   'staff.tab.branches': 'Chi nhánh',
   'staff.tab.staff': 'Nhân sự',
   'staff.tab.procedures': 'Dịch vụ',
+  'staff.tab.account': 'Tài khoản',
 
   'staff.login.title': 'Đăng nhập nhân viên',
   'staff.login.subtitle': 'Chỉ dành cho quản lý, thợ và quản trị.',
@@ -102,6 +103,13 @@ export const VI: Record<string, string> = {
   'staff.login.invalid': 'Email hoặc mật khẩu không đúng',
   'staff.login.emailRequired': 'Vui lòng nhập email',
   'staff.login.passwordRequired': 'Vui lòng nhập mật khẩu',
+
+  'staff.account.title': 'Tài khoản của tôi',
+  'staff.account.subtitle': 'Cập nhật email, số điện thoại hoặc mật khẩu của bạn.',
+  'staff.account.newPassword': 'Mật khẩu mới',
+  'staff.account.passwordHint': 'Để trống nếu không đổi mật khẩu',
+  'staff.account.save': 'Lưu tài khoản',
+  'staff.account.saveError': 'Không thể cập nhật tài khoản.',
 
   'manager.dashboard.title': 'Hôm nay',
   'manager.dashboard.subtitle': 'Tổng quan ngày {date}',
@@ -308,6 +316,7 @@ export const EN: Record<string, string> = {
   'staff.tab.branches': 'Branches',
   'staff.tab.staff': 'Staff',
   'staff.tab.procedures': 'Services',
+  'staff.tab.account': 'Account',
 
   'staff.login.title': 'Staff login',
   'staff.login.subtitle': 'For managers, masters, and admins only.',
@@ -318,6 +327,13 @@ export const EN: Record<string, string> = {
   'staff.login.invalid': 'Invalid email or password',
   'staff.login.emailRequired': 'Please enter an email',
   'staff.login.passwordRequired': 'Please enter a password',
+
+  'staff.account.title': 'My account',
+  'staff.account.subtitle': 'Update your email, phone number, or password.',
+  'staff.account.newPassword': 'New password',
+  'staff.account.passwordHint': 'Leave blank to keep current password',
+  'staff.account.save': 'Save account',
+  'staff.account.saveError': 'Could not update account.',
 
   'manager.dashboard.title': 'Today',
   'manager.dashboard.subtitle': 'Overview for {date}',

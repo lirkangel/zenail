@@ -10,6 +10,7 @@ import { BookSuccessPage } from './pages/guest/BookSuccessPage.tsx'
 import { BookTimePage } from './pages/guest/BookTimePage.tsx'
 import { StaffLoginPage } from './pages/staff/StaffLoginPage.tsx'
 import { StaffHomeRedirect } from './pages/staff/StaffHomeRedirect.tsx'
+import { StaffAccountPage } from './pages/staff/StaffAccountPage.tsx'
 import { MasterSchedulePage } from './pages/staff/master/MasterSchedulePage.tsx'
 import { MasterAppointmentPage } from './pages/staff/master/MasterAppointmentPage.tsx'
 import { ManagerDashboardPage } from './pages/staff/manager/ManagerDashboardPage.tsx'
@@ -45,6 +46,7 @@ function App() {
         }
       >
         <Route path="/staff" element={<StaffHomeRedirect />} />
+        <Route path="/staff/account" element={<StaffAccountPage />} />
 
         <Route element={<RequireRole roles={['master', 'admin']} />}>
           <Route path="/staff/schedule" element={<MasterSchedulePage />} />
