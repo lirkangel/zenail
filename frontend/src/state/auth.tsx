@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { apiFetch } from '../api/client'
 import type { LoginResponse, Me, StaffRole } from '../api/types'
@@ -9,8 +9,9 @@ const TOKEN_KEY = 'zenail.token'
 const ME_KEY = 'zenail.me'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isReady, setIsReady] = useState(false)
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
+  const initialToken = localStorage.getItem(TOKEN_KEY)
+  const [isReady, setIsReady] = useState(() => !initialToken)
+  const [token, setToken] = useState<string | null>(initialToken)
   const [me, setMe] = useState<Me | null>(() => {
     const raw = localStorage.getItem(ME_KEY)
     return raw ? (JSON.parse(raw) as Me) : null
@@ -30,32 +31,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clearSession = useCallback(() => {
     setToken(null)
     setMe(null)
+    setIsReady(true)
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(ME_KEY)
   }, [])
 
-  const bootstrapAuth = useEffectEvent(async () => {
-    if (!token) {
-      setIsReady(true)
-      return
-    }
-    try {
-      await refreshMeWithToken(token)
-    } catch {
-      clearSession()
-    } finally {
-      setIsReady(true)
-    }
-  })
-
   useEffect(() => {
-    void bootstrapAuth()
-  }, [bootstrapAuth, token])
+    if (!token || isReady) return
+
+    let cancelled = false
+
+    apiFetch<Me>('/api/me', { token })
+      .then((next) => {
+        if (cancelled) return
+        setMe(next)
+        localStorage.setItem(ME_KEY, JSON.stringify(next))
+      })
+      .catch(() => {
+        if (cancelled) return
+        clearSession()
+      })
+      .finally(() => {
+        if (cancelled) return
+        setIsReady(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [clearSession, isReady, token])
 
   const refreshMe = useCallback(async () => refreshMeWithToken(token), [refreshMeWithToken, token])
 
   const login = useCallback(
     async (email: string, password: string) => {
+      setIsReady(false)
       const resp = await apiFetch<LoginResponse>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
@@ -63,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(resp.access_token)
       localStorage.setItem(TOKEN_KEY, resp.access_token)
       await refreshMeWithToken(resp.access_token)
+      setIsReady(true)
     },
     [refreshMeWithToken],
   )

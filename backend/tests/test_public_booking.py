@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
@@ -244,6 +245,7 @@ def test_revenue_sums_completed_only(client, db_session):
 
 def test_manager_approves_reschedule_updates_appointment(client, db_session):
     branch, master, proc = seed_min(db_session)
+    branch_tz = ZoneInfo(branch.timezone)
     manager = Staff(
         full_name="Mgr",
         email="mgr2@example.com",
@@ -276,7 +278,7 @@ def test_manager_approves_reschedule_updates_appointment(client, db_session):
     req = RescheduleRequest(
         appointment_id=appt.id,
         master_id=master.id,
-        proposed_start_time=datetime(2030, 1, 1, 14, 0, tzinfo=timezone.utc),
+        proposed_start_time=datetime(2030, 1, 1, 7, 0, tzinfo=timezone.utc),
         status=RescheduleRequestStatus.pending,
     )
     db_session.add(req)
@@ -294,7 +296,7 @@ def test_manager_approves_reschedule_updates_appointment(client, db_session):
 
     updated = db_session.scalar(select(Appointment).where(Appointment.id == appt.id))
     assert updated is not None
-    assert updated.start_time.hour == 14
+    assert updated.start_time.replace(tzinfo=timezone.utc).astimezone(branch_tz).hour == 14
 
 
 def test_manager_can_see_and_reassign_appointment_master(client, db_session):

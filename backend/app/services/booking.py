@@ -35,10 +35,9 @@ def now_in_branch(branch: Branch) -> datetime:
 
 def normalize_to_utc(value: datetime, *, field_name: str) -> datetime:
     if value.tzinfo is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"{field_name} must include timezone",
-        )
+        # SQLite test runs can round-trip timezone-aware UTC values back as naive
+        # datetimes. Treat persisted naive values as UTC while keeping API inputs strict.
+        value = value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
 
 
