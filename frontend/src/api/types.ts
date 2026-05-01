@@ -5,6 +5,7 @@ export type Branch = {
   name: string
   address?: string | null
   phone?: string | null
+  timezone: string
   open_time: string
   close_time: string
 }
@@ -25,6 +26,7 @@ export type Availability = {
   procedure_id?: number | null
   procedure_ids: number[]
   date: string
+  branch_timezone: string
   total_duration_minutes: number
   total_price: string
   slots: string[]
@@ -39,6 +41,7 @@ export type AppointmentProcedure = {
 
 export type Appointment = {
   id: number
+  booking_reference: string
   branch_id: number
   master_id: number
   master_name?: string | null
@@ -68,4 +71,3 @@ export type Me = {
   role: StaffRole
   branch_id: number | null
 }
-

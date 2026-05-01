@@ -49,7 +49,7 @@ export function BookConfirmPage() {
               }),
             })
             saveLastBooking(appt)
-            nav(`/book/success?id=${appt.id}`, { replace: true })
+            nav(`/book/success?ref=${encodeURIComponent(appt.booking_reference)}`, { replace: true })
           })}
         >
           <div>

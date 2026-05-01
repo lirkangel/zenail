@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -28,7 +28,14 @@ from app.schemas.manager import (
 )
 from app.schemas.public import AppointmentOut
 from app.services.appointment_out import appointment_to_out
-from app.services.scheduling import day_bounds_utc
+from app.services.booking import (
+    appointment_duration_minutes,
+    appointment_procedure_ids,
+    appointment_start_end,
+    branch_day_bounds,
+    ensure_no_conflict,
+    now_in_branch,
+)
 
 router = APIRouter(tags=["manager"])
 
@@ -46,8 +53,11 @@ def branch_appointments(
     staff: Staff = Depends(require_manager),
 ) -> list[AppointmentOut]:
     branch_id = _require_branch(staff)
-    day = date.fromisoformat(date_str) if date_str else date.today()
-    day_start, day_end = day_bounds_utc(day)
+    branch = db.get(Branch, branch_id)
+    if not branch:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+    day = date.fromisoformat(date_str) if date_str else now_in_branch(branch).date()
+    day_start, day_end = branch_day_bounds(branch, day=day)
 
     appts = db.scalars(
         select(Appointment)
@@ -82,8 +92,7 @@ def update_appointment(
 
     target_master_id = payload.master_id if payload.master_id is not None else appt.master_id
     target_start = payload.start_time if payload.start_time is not None else appt.start_time
-    duration = appt.end_time - appt.start_time
-    target_end = target_start + duration
+    duration_minutes = appointment_duration_minutes(appt)
 
     if payload.master_id is not None:
         target_master = db.get(Staff, payload.master_id)
@@ -95,7 +104,7 @@ def update_appointment(
         ):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Master not found")
 
-        procedure_ids = [p.procedure_id for p in appt.procedures] or [appt.procedure_id]
+        procedure_ids = appointment_procedure_ids(appt)
         available_count = db.scalar(
             select(func.count(MasterProcedure.procedure_id)).where(
                 MasterProcedure.master_id == payload.master_id,
@@ -106,30 +115,25 @@ def update_appointment(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Master cannot perform all procedures")
 
     if payload.start_time is not None or payload.master_id is not None:
-        if payload.start_time is not None and target_start.tzinfo is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="start_time must include timezone")
-
         branch = db.get(Branch, appt.branch_id)
         if not branch:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
-        if target_start.time() < branch.open_time or target_end.time() > branch.close_time:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Outside branch hours")
-
-        conflict = db.scalar(
-            select(Appointment).where(
-                Appointment.master_id == target_master_id,
-                Appointment.id != appt.id,
-                Appointment.status != AppointmentStatus.canceled,
-                Appointment.start_time < target_end,
-                Appointment.end_time > target_start,
-            )
+        target_start_utc, target_end_utc = appointment_start_end(
+            branch=branch,
+            start_value=target_start,
+            duration_minutes=duration_minutes,
         )
-        if conflict:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Time slot not available")
+        ensure_no_conflict(
+            db,
+            master_id=target_master_id,
+            start_utc=target_start_utc,
+            end_utc=target_end_utc,
+            exclude_appointment_id=appt.id,
+        )
 
         appt.master_id = target_master_id
-        appt.start_time = target_start
-        appt.end_time = target_end
+        appt.start_time = target_start_utc
+        appt.end_time = target_end_utc
 
     db.commit()
     db.refresh(appt)
@@ -158,11 +162,13 @@ def reassign_master(
     db: Session = Depends(get_db),
     staff: Staff = Depends(require_manager),
 ) -> ManagerMasterOut:
-    _require_branch(staff)
+    branch_id = _require_branch(staff)
     master = db.get(Staff, master_id)
-    if not master or master.role != StaffRole.master:
+    if not master or master.role != StaffRole.master or master.branch_id != branch_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Master not found")
-    master.branch_id = payload.branch_id
+    if payload.branch_id != branch_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Managers can only manage masters on their branch")
+    master.branch_id = branch_id
     db.commit()
     db.refresh(master)
     return ManagerMasterOut(id=master.id, full_name=master.full_name, branch_id=master.branch_id)
@@ -217,36 +223,28 @@ def decide_reschedule_request(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid status")
 
     if payload.status == RescheduleRequestStatus.approved:
-        proc = db.get(Procedure, appt.procedure_id)
-        if not proc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Procedure not found")
-        new_start = req.proposed_start_time
-        new_end = new_start + timedelta(minutes=proc.duration_minutes)
-
         branch = db.get(Branch, appt.branch_id)
         if not branch:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
-        if new_start.time() < branch.open_time or new_end.time() > branch.close_time:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Outside branch hours")
-
-        conflict = db.scalar(
-            select(Appointment).where(
-                Appointment.master_id == appt.master_id,
-                Appointment.id != appt.id,
-                Appointment.status != AppointmentStatus.canceled,
-                Appointment.start_time < new_end,
-                Appointment.end_time > new_start,
-            )
+        new_start, new_end = appointment_start_end(
+            branch=branch,
+            start_value=req.proposed_start_time,
+            duration_minutes=appointment_duration_minutes(appt),
         )
-        if conflict:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Time slot not available")
+        ensure_no_conflict(
+            db,
+            master_id=appt.master_id,
+            start_utc=new_start,
+            end_utc=new_end,
+            exclude_appointment_id=appt.id,
+        )
 
         appt.start_time = new_start
         appt.end_time = new_end
 
     req.status = payload.status
     req.decided_by_manager_id = staff.id
-    req.decided_at = datetime.utcnow()
+    req.decided_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(req)
 
@@ -271,6 +269,9 @@ def branch_revenue(
     staff: Staff = Depends(require_manager),
 ) -> RevenueOut:
     branch_id = _require_branch(staff)
+    branch = db.get(Branch, branch_id)
+    if not branch:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
     try:
         start = date.fromisoformat(from_date)
         end = date.fromisoformat(to_date)
@@ -279,8 +280,8 @@ def branch_revenue(
     if end < start:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid range")
 
-    start_dt, _ = day_bounds_utc(start)
-    _, end_dt = day_bounds_utc(end + timedelta(days=1))
+    start_dt, _ = branch_day_bounds(branch, day=start)
+    _, end_dt = branch_day_bounds(branch, day=end + timedelta(days=1))
 
     total = db.scalar(
         select(func.coalesce(func.sum(Appointment.price), 0))
@@ -292,4 +293,3 @@ def branch_revenue(
         )
     )
     return RevenueOut(from_date=from_date, to_date=to_date, total=Decimal(total))
-

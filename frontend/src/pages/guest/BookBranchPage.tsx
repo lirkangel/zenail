@@ -15,13 +15,11 @@ export function BookBranchPage() {
     queryFn: () => apiFetch<Branch[]>('/api/branches'),
   })
   const lastQ = useQuery({
-    queryKey: ['lastBooking', lastBooking?.id, lastBooking?.client_phone],
+    queryKey: ['lastBooking', lastBooking?.booking_reference],
     enabled: !!lastBooking,
     queryFn: () =>
       apiFetch<Appointment>(
-        `/api/appointments/${lastBooking!.id}?client_phone=${encodeURIComponent(
-          lastBooking!.client_phone,
-        )}`,
+        `/api/appointments/by-reference/${encodeURIComponent(lastBooking!.booking_reference)}`,
       ),
   })
 

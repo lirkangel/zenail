@@ -11,6 +11,7 @@ class BranchOut(BaseModel):
     name: str
     address: str | None = None
     phone: str | None = None
+    timezone: str
     open_time: time
     close_time: time
 
@@ -34,6 +35,7 @@ class AvailabilityOut(BaseModel):
     procedure_id: int | None = None
     procedure_ids: list[int]
     date: str
+    branch_timezone: str
     total_duration_minutes: int
     total_price: Decimal
     slots: list[datetime]
@@ -58,6 +60,7 @@ class AppointmentProcedureOut(BaseModel):
 
 class AppointmentOut(BaseModel):
     id: int
+    booking_reference: str
     branch_id: int
     master_id: int
     master_name: str | None = None
@@ -71,4 +74,3 @@ class AppointmentOut(BaseModel):
     total_duration_minutes: int
     price: Decimal
     status: AppointmentStatus
-

@@ -1,11 +1,17 @@
 from datetime import datetime
 from decimal import Decimal
+import secrets
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import AppointmentStatus
+
+
+def generate_booking_reference() -> str:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(12))
 
 
 class Appointment(Base):
@@ -19,6 +25,13 @@ class Appointment(Base):
 
     client_name: Mapped[str] = mapped_column(String(200), nullable=False)
     client_phone: Mapped[str] = mapped_column(String(50), nullable=False)
+    booking_reference: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        unique=True,
+        index=True,
+        default=generate_booking_reference,
+    )
 
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -46,4 +59,3 @@ class Appointment(Base):
         cascade="all, delete-orphan",
         order_by="AppointmentProcedure.sort_order",
     )
-

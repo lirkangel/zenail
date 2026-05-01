@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -37,7 +37,13 @@ from app.schemas.admin import (
 )
 from app.schemas.public import AppointmentOut
 from app.services.appointment_out import appointment_to_out
-from app.services.scheduling import day_bounds_utc
+from app.services.booking import (
+    appointment_duration_minutes,
+    appointment_start_end,
+    branch_day_bounds,
+    ensure_no_conflict,
+    validate_branch_timezone,
+)
 
 router = APIRouter(tags=["admin"])
 
@@ -50,7 +56,14 @@ def appointments(
     _: Staff = Depends(require_admin),
 ) -> list[AppointmentOut]:
     day = date.fromisoformat(date_str) if date_str else date.today()
-    day_start, day_end = day_bounds_utc(day)
+    if branch_id is not None:
+        branch = db.get(Branch, branch_id)
+        if not branch:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+        day_start, day_end = branch_day_bounds(branch, day=day)
+    else:
+        day_start = datetime(day.year, day.month, day.day, tzinfo=timezone.utc)
+        day_end = day_start + timedelta(days=1)
 
     stmt = (
         select(Appointment)
@@ -78,31 +91,21 @@ def update_appointment(
         appt.status = payload.status
 
     if payload.start_time is not None:
-        if payload.start_time.tzinfo is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="start_time must include timezone")
-        proc = db.get(Procedure, appt.procedure_id)
-        if not proc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Procedure not found")
-        new_start = payload.start_time
-        new_end = new_start + timedelta(minutes=proc.duration_minutes)
-
         branch = db.get(Branch, appt.branch_id)
         if not branch:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
-        if new_start.time() < branch.open_time or new_end.time() > branch.close_time:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Outside branch hours")
-
-        conflict = db.scalar(
-            select(Appointment).where(
-                Appointment.master_id == appt.master_id,
-                Appointment.id != appt.id,
-                Appointment.status != AppointmentStatus.canceled,
-                Appointment.start_time < new_end,
-                Appointment.end_time > new_start,
-            )
+        new_start, new_end = appointment_start_end(
+            branch=branch,
+            start_value=payload.start_time,
+            duration_minutes=appointment_duration_minutes(appt),
         )
-        if conflict:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Time slot not available")
+        ensure_no_conflict(
+            db,
+            master_id=appt.master_id,
+            start_utc=new_start,
+            end_utc=new_end,
+            exclude_appointment_id=appt.id,
+        )
 
         appt.start_time = new_start
         appt.end_time = new_end
@@ -208,34 +211,27 @@ def decide_reschedule_request(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid status")
 
     if payload.status == RescheduleRequestStatus.approved:
-        proc = db.get(Procedure, appt.procedure_id)
-        if not proc:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Procedure not found")
-        new_start = req.proposed_start_time
-        new_end = new_start + timedelta(minutes=proc.duration_minutes)
         branch = db.get(Branch, appt.branch_id)
         if not branch:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
-        if new_start.time() < branch.open_time or new_end.time() > branch.close_time:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Outside branch hours")
-
-        conflict = db.scalar(
-            select(Appointment).where(
-                Appointment.master_id == appt.master_id,
-                Appointment.id != appt.id,
-                Appointment.status != AppointmentStatus.canceled,
-                Appointment.start_time < new_end,
-                Appointment.end_time > new_start,
-            )
+        new_start, new_end = appointment_start_end(
+            branch=branch,
+            start_value=req.proposed_start_time,
+            duration_minutes=appointment_duration_minutes(appt),
         )
-        if conflict:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Time slot not available")
+        ensure_no_conflict(
+            db,
+            master_id=appt.master_id,
+            start_utc=new_start,
+            end_utc=new_end,
+            exclude_appointment_id=appt.id,
+        )
         appt.start_time = new_start
         appt.end_time = new_end
 
     req.status = payload.status
     req.decided_by_manager_id = staff.id
-    req.decided_at = datetime.utcnow()
+    req.decided_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(req)
@@ -294,6 +290,7 @@ def list_branches(db: Session = Depends(get_db), _: Staff = Depends(require_admi
             name=b.name,
             address=b.address,
             phone=b.phone,
+            timezone=b.timezone,
             open_time=b.open_time,
             close_time=b.close_time,
         )
@@ -307,6 +304,7 @@ def create_branch(payload: BranchCreate, db: Session = Depends(get_db), _: Staff
         name=payload.name,
         address=payload.address,
         phone=payload.phone,
+        timezone=validate_branch_timezone(payload.timezone),
         open_time=payload.open_time,
         close_time=payload.close_time,
     )
@@ -318,6 +316,7 @@ def create_branch(payload: BranchCreate, db: Session = Depends(get_db), _: Staff
         name=b.name,
         address=b.address,
         phone=b.phone,
+        timezone=b.timezone,
         open_time=b.open_time,
         close_time=b.close_time,
     )
@@ -334,6 +333,8 @@ def update_branch(
     if not b:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
     for k, v in payload.model_dump(exclude_unset=True).items():
+        if k == "timezone" and v is not None:
+            v = validate_branch_timezone(v)
         setattr(b, k, v)
     db.commit()
     db.refresh(b)
@@ -342,6 +343,7 @@ def update_branch(
         name=b.name,
         address=b.address,
         phone=b.phone,
+        timezone=b.timezone,
         open_time=b.open_time,
         close_time=b.close_time,
     )
@@ -615,4 +617,3 @@ def unlink_master_procedure(
     if link:
         db.delete(link)
         db.commit()
-

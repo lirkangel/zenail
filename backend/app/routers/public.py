@@ -24,7 +24,15 @@ from app.schemas.public import (
     ProcedureOut,
 )
 from app.services.appointment_out import appointment_to_out
-from app.services.scheduling import day_bounds_utc, iter_slots
+from app.services.booking import (
+    UTC,
+    appointment_start_end,
+    branch_day_bounds,
+    ensure_branch_day_not_past,
+    ensure_no_conflict,
+    get_branch_timezone,
+    iter_branch_slots,
+)
 
 router = APIRouter(tags=["public"])
 
@@ -80,6 +88,7 @@ def list_branches(db: Session = Depends(get_db)) -> list[BranchOut]:
             name=b.name,
             address=b.address,
             phone=b.phone,
+            timezone=b.timezone,
             open_time=b.open_time,
             close_time=b.close_time,
         )
@@ -137,9 +146,6 @@ def availability(
         day = date.fromisoformat(date_str)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid date")
-    if day < date.today():
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot book a past date")
-
     master = db.scalar(select(Staff).where(Staff.id == master_id, Staff.role == StaffRole.master))
     if not master or not master.branch_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Master not found")
@@ -147,6 +153,7 @@ def availability(
     branch = db.get(Branch, master.branch_id)
     if not branch:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+    ensure_branch_day_not_past(branch, day=day)
 
     selected_ids = _parse_procedure_ids(procedure_id=procedure_id, procedure_ids=procedure_ids)
     procs = _load_master_procedures(db, master_id=master_id, procedure_ids=selected_ids)
@@ -165,12 +172,13 @@ def availability(
             procedure_id=selected_ids[0],
             procedure_ids=selected_ids,
             date=date_str,
+            branch_timezone=branch.timezone,
             total_duration_minutes=total_duration,
             total_price=total_price,
             slots=[],
         )
 
-    day_start, day_end = day_bounds_utc(day)
+    day_start, day_end = branch_day_bounds(branch, day=day)
     existing = db.scalars(
         select(Appointment).where(
             Appointment.master_id == master_id,
@@ -180,18 +188,14 @@ def availability(
         )
     ).all()
 
-    candidates = iter_slots(
-        day=day,
-        open_time=branch.open_time,
-        close_time=branch.close_time,
-        duration_minutes=total_duration,
-    )
+    candidates = iter_branch_slots(branch=branch, day=day, duration_minutes=total_duration)
     duration = timedelta(minutes=total_duration)
 
     free: list = []
     for start in candidates:
-        end = start + duration
-        if any(a.start_time < end and a.end_time > start for a in existing):
+        start_utc = start.astimezone(UTC)
+        end_utc = (start + duration).astimezone(UTC)
+        if any(a.start_time < end_utc and a.end_time > start_utc for a in existing):
             continue
         free.append(start)
 
@@ -200,6 +204,7 @@ def availability(
         procedure_id=selected_ids[0],
         procedure_ids=selected_ids,
         date=date_str,
+        branch_timezone=branch.timezone,
         total_duration_minutes=total_duration,
         total_price=total_price,
         slots=free,
@@ -229,36 +234,18 @@ def create_appointment(payload: AppointmentCreate, db: Session = Depends(get_db)
     total_duration = sum(p.duration_minutes for p in procs)
     total_price = sum((Decimal(p.price) for p in procs), Decimal("0"))
 
-    start = payload.start_time
-    if start.tzinfo is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="start_time must include timezone")
-    if start.date() < date.today():
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot book a past date")
-    end = start + timedelta(minutes=total_duration)
+    start, end = appointment_start_end(branch=branch, start_value=payload.start_time, duration_minutes=total_duration)
 
     closed = db.scalar(
         select(BranchNonWorkingDay).where(
             BranchNonWorkingDay.branch_id == branch.id,
-            BranchNonWorkingDay.day == start.date(),
+            BranchNonWorkingDay.day == start.astimezone(get_branch_timezone(branch)).date(),
         )
     )
     if closed:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Branch is closed on this day")
 
-    # branch hours check (UTC-based)
-    if start.time() < branch.open_time or end.time() > branch.close_time:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Outside branch hours")
-
-    conflict = db.scalar(
-        select(Appointment).where(
-            Appointment.master_id == payload.master_id,
-            Appointment.status != AppointmentStatus.canceled,
-            Appointment.start_time < end,
-            Appointment.end_time > start,
-        )
-    )
-    if conflict:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Time slot not available")
+    ensure_no_conflict(db, master_id=payload.master_id, start_utc=start, end_utc=end)
 
     appt = Appointment(
         branch_id=payload.branch_id,
@@ -289,15 +276,12 @@ def create_appointment(payload: AppointmentCreate, db: Session = Depends(get_db)
 
     return _appointment_out(appt)
 
-
-@router.get("/appointments/{appointment_id}", response_model=AppointmentOut)
+@router.get("/appointments/by-reference/{booking_reference}", response_model=AppointmentOut)
 def get_public_appointment(
-    appointment_id: int,
-    client_phone: str = Query(...),
+    booking_reference: str,
     db: Session = Depends(get_db),
 ) -> AppointmentOut:
-    appt = db.get(Appointment, appointment_id)
-    if not appt or appt.client_phone != client_phone:
+    appt = db.scalar(select(Appointment).where(Appointment.booking_reference == booking_reference))
+    if not appt:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
     return _appointment_out(appt)
-

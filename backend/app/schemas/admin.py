@@ -10,6 +10,7 @@ class BranchCreate(BaseModel):
     name: str
     address: str | None = None
     phone: str | None = None
+    timezone: str = "UTC"
     open_time: time = time(9, 0)
     close_time: time = time(20, 0)
 
@@ -18,6 +19,7 @@ class BranchUpdate(BaseModel):
     name: str | None = None
     address: str | None = None
     phone: str | None = None
+    timezone: str | None = None
     open_time: time | None = None
     close_time: time | None = None
 
@@ -27,6 +29,7 @@ class BranchAdminOut(BaseModel):
     name: str
     address: str | None = None
     phone: str | None = None
+    timezone: str
     open_time: time
     close_time: time
 
@@ -150,4 +153,3 @@ class RevenueBreakdownOut(BaseModel):
     to_date: str
     total: Decimal
     by_branch: list[RevenueBreakdownRow]
-

@@ -5,26 +5,25 @@ import type { Appointment } from '../../api/types'
 import { Card } from '../../components/Card'
 import { Page } from '../../components/Page'
 import { appointmentStatusLabel, useT } from '../../state/useT'
-import { getLastBooking } from '../../state/booking'
 
 export function BookSuccessPage() {
   const t = useT()
   const [sp] = useSearchParams()
-  const id = sp.get('id')
-  const last = getLastBooking()
+  const bookingReference = sp.get('ref')
   const q = useQuery({
-    queryKey: ['bookingSuccess', id, last?.client_phone],
-    enabled: !!id && !!last?.client_phone,
+    queryKey: ['bookingSuccess', bookingReference],
+    enabled: !!bookingReference,
     queryFn: () =>
       apiFetch<Appointment>(
-        `/api/appointments/${id}?client_phone=${encodeURIComponent(last!.client_phone)}`,
+        `/api/appointments/by-reference/${encodeURIComponent(bookingReference!)}`,
       ),
   })
   return (
     <Page title={t('guest.success.title')} subtitle={t('guest.success.subtitle')}>
       <Card className="border-emerald-100/90 bg-gradient-to-br from-emerald-50/90 to-rose-50/60">
         <div className="text-sm text-rose-950">
-          {t('guest.success.appointmentId')}: <span className="font-semibold">{id ?? t('common.emDash')}</span>
+          {t('guest.success.appointmentId')}:{' '}
+          <span className="font-semibold">{bookingReference ?? t('common.emDash')}</span>
         </div>
         {q.data ? (
           <div className="mt-3 space-y-1 text-xs text-rose-900/85">

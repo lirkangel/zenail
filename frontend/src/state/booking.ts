@@ -3,14 +3,13 @@ import type { Appointment } from '../api/types'
 const LAST_BOOKING_KEY = 'zenail.lastBooking'
 
 export type LastBooking = {
-  id: number
-  client_phone: string
+  booking_reference: string
 }
 
 export function saveLastBooking(appt: Appointment) {
   localStorage.setItem(
     LAST_BOOKING_KEY,
-    JSON.stringify({ id: appt.id, client_phone: appt.client_phone }),
+    JSON.stringify({ booking_reference: appt.booking_reference }),
   )
 }
 
@@ -24,4 +23,3 @@ export function getLastBooking(): LastBooking | null {
     return null
   }
 }
-

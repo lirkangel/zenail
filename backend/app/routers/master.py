@@ -14,7 +14,13 @@ from app.models.staff import Staff
 from app.schemas.master import RescheduleRequestCreate, RescheduleRequestOut
 from app.schemas.public import AppointmentOut
 from app.services.appointment_out import appointment_to_out
-from app.services.scheduling import day_bounds_utc
+from app.services.booking import (
+    appointment_duration_minutes,
+    appointment_start_end,
+    branch_day_bounds,
+    ensure_no_conflict,
+    now_in_branch,
+)
 
 router = APIRouter(tags=["master"])
 
@@ -28,8 +34,12 @@ def my_appointments(
     if staff.role != StaffRole.master:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only masters can view this schedule")
 
-    day = date.fromisoformat(date_str) if date_str else date.today()
-    day_start, day_end = day_bounds_utc(day)
+    branch = db.get(Branch, staff.branch_id) if staff.branch_id else None
+    if not branch:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+
+    day = date.fromisoformat(date_str) if date_str else now_in_branch(branch).date()
+    day_start, day_end = branch_day_bounds(branch, day=day)
 
     appts = db.scalars(
         select(Appointment)
@@ -75,34 +85,28 @@ def request_reschedule(
     if appt.status == AppointmentStatus.canceled:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Appointment is canceled")
 
-    if payload.proposed_start_time.tzinfo is None:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="proposed_start_time must include timezone")
-
     branch = db.get(Branch, appt.branch_id)
     if not branch:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
 
-    proposed_end = payload.proposed_start_time + (appt.end_time - appt.start_time)
-    if payload.proposed_start_time.time() < branch.open_time or proposed_end.time() > branch.close_time:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Outside branch hours")
-
-    # Avoid proposing an already-conflicting time (excluding the current appointment).
-    conflict = db.scalar(
-        select(Appointment).where(
-            Appointment.master_id == staff.id,
-            Appointment.id != appt.id,
-            Appointment.status != AppointmentStatus.canceled,
-            Appointment.start_time < proposed_end,
-            Appointment.end_time > payload.proposed_start_time,
-        )
+    proposed_start, proposed_end = appointment_start_end(
+        branch=branch,
+        start_value=payload.proposed_start_time,
+        duration_minutes=appointment_duration_minutes(appt),
+        field_name="proposed_start_time",
     )
-    if conflict:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Proposed time conflicts with another appointment")
+    ensure_no_conflict(
+        db,
+        master_id=staff.id,
+        start_utc=proposed_start,
+        end_utc=proposed_end,
+        exclude_appointment_id=appt.id,
+    )
 
     req = RescheduleRequest(
         appointment_id=appt.id,
         master_id=staff.id,
-        proposed_start_time=payload.proposed_start_time,
+        proposed_start_time=proposed_start,
         reason=payload.reason,
         status=RescheduleRequestStatus.pending,
     )
@@ -119,4 +123,3 @@ def request_reschedule(
         status=req.status,
         created_at=req.created_at,
     )
-

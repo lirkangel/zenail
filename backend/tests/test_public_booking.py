@@ -13,7 +13,7 @@ from app.models.staff import Staff
 
 
 def seed_min(db):
-    branch = Branch(name="B1", open_time=time(9, 0), close_time=time(20, 0))
+    branch = Branch(name="B1", timezone="Asia/Ho_Chi_Minh", open_time=time(9, 0), close_time=time(20, 0))
     db.add(branch)
     db.flush()
     master = Staff(
@@ -101,8 +101,9 @@ def test_multi_procedure_booking_sums_duration_and_price_and_can_be_looked_up(cl
     assert data["price"] == "15.00"
     assert data["end_time"].startswith("2030-01-01T11:30:00")
     assert [p["id"] for p in data["procedures"]] == [proc.id, proc2.id]
+    assert data["booking_reference"]
 
-    lookup = client.get(f"/api/appointments/{data['id']}?client_phone=555")
+    lookup = client.get(f"/api/appointments/by-reference/{data['booking_reference']}")
     lookup.raise_for_status()
     assert lookup.json()["status"] == "scheduled"
 
@@ -153,7 +154,19 @@ def test_branch_non_working_day_blocks_availability(client, db_session):
 
     r = client.get(f"/api/availability?master_id={master.id}&procedure_ids={proc.id}&date={day}")
     r.raise_for_status()
+    assert r.json()["branch_timezone"] == "Asia/Ho_Chi_Minh"
     assert r.json()["slots"] == []
+
+
+def test_availability_slots_are_returned_in_branch_timezone(client, db_session):
+    branch, master, proc = seed_min(db_session)
+
+    r = client.get(f"/api/availability?master_id={master.id}&procedure_ids={proc.id}&date=2030-01-01")
+    r.raise_for_status()
+
+    data = r.json()
+    assert data["branch_timezone"] == "Asia/Ho_Chi_Minh"
+    assert data["slots"][0].endswith("+07:00")
 
 
 def test_seed_style_local_demo_email_can_login_and_load_me(client, db_session):
@@ -340,3 +353,37 @@ def test_manager_can_see_and_reassign_appointment_master(client, db_session):
     assert data["master_id"] == other_master.id
     assert data["master_name"] == "M2"
 
+
+def test_manager_cannot_reassign_master_across_branches(client, db_session):
+    branch, _, _ = seed_min(db_session)
+    other_branch = Branch(name="B2", timezone="Asia/Ho_Chi_Minh", open_time=time(9, 0), close_time=time(20, 0))
+    db_session.add(other_branch)
+    db_session.flush()
+    manager = Staff(
+        full_name="Mgr",
+        email="mgr4@example.com",
+        role=StaffRole.manager,
+        branch_id=branch.id,
+        password_hash=hash_password("manager123"),
+        is_active=True,
+    )
+    foreign_master = Staff(
+        full_name="Foreign Master",
+        email="foreign@example.com",
+        role=StaffRole.master,
+        branch_id=other_branch.id,
+        password_hash=hash_password("x"),
+        is_active=True,
+    )
+    db_session.add_all([manager, foreign_master])
+    db_session.commit()
+
+    token = client.post("/api/auth/login", json={"email": manager.email, "password": "manager123"}).json()[
+        "access_token"
+    ]
+    r = client.patch(
+        f"/api/manager/masters/{foreign_master.id}",
+        json={"branch_id": branch.id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r.status_code == 404

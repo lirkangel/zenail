@@ -16,11 +16,20 @@ from app.models.procedure import Procedure
 from app.models.staff import Staff
 
 
-def _ensure_branch(db, *, name: str, open_time: time, close_time: time, address: str) -> Branch:
+def _ensure_branch(
+    db,
+    *,
+    name: str,
+    timezone: str,
+    open_time: time,
+    close_time: time,
+    address: str,
+) -> Branch:
     b = db.scalar(select(Branch).where(Branch.name == name))
     if b:
+        b.timezone = timezone
         return b
-    b = Branch(name=name, open_time=open_time, close_time=close_time, address=address)
+    b = Branch(name=name, timezone=timezone, open_time=open_time, close_time=close_time, address=address)
     db.add(b)
     db.flush()
     return b
@@ -99,6 +108,7 @@ def run() -> None:
         branch_a = _ensure_branch(
             db,
             name="Zenail Central",
+            timezone="Asia/Ho_Chi_Minh",
             open_time=time(9, 0),
             close_time=time(20, 0),
             address="1 Main Street",
@@ -106,6 +116,7 @@ def run() -> None:
         branch_b = _ensure_branch(
             db,
             name="Zenail Riverside",
+            timezone="Asia/Ho_Chi_Minh",
             open_time=time(10, 0),
             close_time=time(21, 0),
             address="99 River Road",
@@ -238,4 +249,3 @@ def run() -> None:
 
 if __name__ == "__main__":
     run()
-
