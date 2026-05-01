@@ -69,10 +69,6 @@ frontend/
 
 ## Ảnh minh họa
 
-### Nhận diện
-
-![Zenail Hero](frontend/src/assets/hero.png)
-
 ### Screenshot tính năng chính
 
 #### 1. Khách chọn chi nhánh và xem lịch gần nhất
