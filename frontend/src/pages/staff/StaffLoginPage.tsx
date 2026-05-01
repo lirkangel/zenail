@@ -22,6 +22,9 @@ export function StaffLoginPage() {
 
   return (
     <Page title={t('staff.login.title')} subtitle={t('staff.login.subtitle')}>
+      <Button className="mb-3" type="button" variant="secondary" onClick={() => nav('/book/branch')}>
+        {t('common.back')}
+      </Button>
       <Card>
         <form
           className="space-y-3"
