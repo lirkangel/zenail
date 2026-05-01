@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../state/useAuth'
-import { useT } from '../state/useT'
+import { useI18n, useT } from '../state/useT'
 
 function NavLink({ to, label }: { to: string; label: string }) {
   const loc = useLocation()
@@ -20,6 +20,7 @@ function NavLink({ to, label }: { to: string; label: string }) {
 
 export function StaffLayout() {
   const t = useT()
+  const { locale, setLocale } = useI18n()
   const { me, logout } = useAuth()
   const role = me?.role
 
@@ -51,13 +52,22 @@ export function StaffLayout() {
           <div className="text-sm font-semibold bg-gradient-to-r from-rose-700 to-fuchsia-600 bg-clip-text text-transparent">
             {t('staff.layout.title')}
           </div>
-          <button
-            onClick={logout}
-            className="text-xs font-medium text-rose-700 hover:text-rose-900"
-            type="button"
-          >
-            {t('staff.layout.logout')}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-700 hover:text-rose-900"
+              type="button"
+              onClick={() => setLocale(locale === 'vi' ? 'en' : 'vi')}
+            >
+              {locale === 'vi' ? 'EN' : 'VI'}
+            </button>
+            <button
+              onClick={logout}
+              className="text-xs font-medium text-rose-700 hover:text-rose-900"
+              type="button"
+            >
+              {t('staff.layout.logout')}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -73,4 +83,3 @@ export function StaffLayout() {
     </div>
   )
 }
-
