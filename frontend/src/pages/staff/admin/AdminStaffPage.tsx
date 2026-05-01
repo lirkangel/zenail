@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../../api/client'
@@ -42,6 +43,17 @@ export function AdminStaffPage() {
         method: 'POST',
         token: token ?? undefined,
         body: JSON.stringify(body),
+      }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['adminStaff'] })
+    },
+  })
+  const updateM = useMutation({
+    mutationFn: (args: { id: number; branch_id: number | null }) =>
+      apiFetch(`/api/admin/staff/${args.id}`, {
+        method: 'PATCH',
+        token: token ?? undefined,
+        body: JSON.stringify({ branch_id: args.branch_id }),
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['adminStaff'] })
@@ -108,20 +120,67 @@ export function AdminStaffPage() {
 
       <div className="space-y-3">
         {(q.data ?? []).map((s) => (
-          <Card key={s.id} className="transition hover:border-rose-200 hover:shadow-studio">
-            <div className="flex items-baseline justify-between gap-3">
-              <div className="text-sm font-semibold text-rose-950">{s.full_name}</div>
-              <div className="text-xs font-medium text-rose-900/70">{t(`role.${s.role}`)}</div>
-            </div>
-            <div className="mt-1 text-xs text-rose-900/75">{s.email}</div>
-            <div className="mt-1 text-xs text-rose-900/65">
-              {t('admin.staff.branchLine', {
-                branch: s.branch_id ? (branchNameById.get(s.branch_id) ?? `#${s.branch_id}`) : t('admin.staff.noBranch'),
-              })}
-            </div>
-          </Card>
+          <StaffRowCard
+            key={s.id}
+            row={s}
+            branchName={s.branch_id ? (branchNameById.get(s.branch_id) ?? `#${s.branch_id}`) : t('admin.staff.noBranch')}
+            branches={branchesQ.data ?? []}
+            pending={updateM.isPending}
+            onSave={(branchId) => updateM.mutate({ id: s.id, branch_id: branchId })}
+          />
         ))}
       </div>
     </Page>
+  )
+}
+
+function StaffRowCard({
+  row,
+  branchName,
+  branches,
+  pending,
+  onSave,
+}: {
+  row: StaffRow
+  branchName: string
+  branches: BranchRow[]
+  pending: boolean
+  onSave: (branchId: number | null) => void
+}) {
+  const t = useT()
+  const [value, setValue] = useState(row.branch_id?.toString() ?? '')
+
+  return (
+    <Card className="transition hover:border-rose-200 hover:shadow-studio">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="text-sm font-semibold text-rose-950">{row.full_name}</div>
+        <div className="text-xs font-medium text-rose-900/70">{t(`role.${row.role}`)}</div>
+      </div>
+      <div className="mt-1 text-xs text-rose-900/75">{row.email}</div>
+      <div className="mt-1 text-xs text-rose-900/65">
+        {t('admin.staff.branchLine', { branch: branchName })}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <select
+          className="w-full rounded-xl border border-rose-200/80 bg-white/90 px-3 py-2 text-sm text-rose-950 shadow-sm"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        >
+          <option value="">{t('admin.staff.noBranch')}</option>
+          {branches.map((branch) => (
+            <option key={branch.id} value={branch.id.toString()}>
+              {branch.name}
+            </option>
+          ))}
+        </select>
+        <Button
+          type="button"
+          disabled={pending}
+          onClick={() => onSave(value.trim() ? Number(value.trim()) : null)}
+        >
+          {pending ? t('common.saving') : t('common.save')}
+        </Button>
+      </div>
+    </Card>
   )
 }
