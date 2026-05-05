@@ -113,9 +113,15 @@ docker compose up --build
 Sau khi chạy:
 
 - Frontend: `http://localhost:5173`
+- Frontend (LAN): `http://10.0.0.11:5173` (nếu muốn dùng `:3002` thì set `FRONTEND_PORT=3002`)
 - Backend API: `http://localhost:8000`
+- Backend API (LAN): `http://10.0.0.11:8000`
 - Swagger docs: `http://localhost:8000/docs`
 - Postgres: `localhost:5432`
+
+Ghi chú khi truy cập từ thiết bị khác trong LAN:
+
+- Set `PUBLIC_API_BASE_URL=http://10.0.0.11:8000` để frontend gọi đúng backend (tránh gọi `localhost` trên máy client).
 
 ## Seed dữ liệu demo
 
