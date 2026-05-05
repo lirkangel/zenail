@@ -33,7 +33,7 @@ services:
     environment:
       # When accessing from another device on LAN, set PUBLIC_API_BASE_URL=http://10.0.0.11:8000
       # For HTTPS behind a reverse proxy that routes /api -> backend, you can set PUBLIC_API_BASE_URL=/api
-      VITE_API_BASE_URL: ${PUBLIC_API_BASE_URL:-/api}
+      VITE_API_BASE_URL: /api
     depends_on:
       - backend
     ports:
