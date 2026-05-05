@@ -16,6 +16,75 @@ from app.models.procedure import Procedure
 from app.models.staff import Staff
 
 
+def _pseudo_master_name(seed: int) -> str:
+    first = [
+        "Linh",
+        "Mai",
+        "An",
+        "Vy",
+        "Thao",
+        "Chi",
+        "Ngoc",
+        "Trang",
+        "Yen",
+        "Khanh",
+        "Hana",
+        "Mina",
+    ]
+    last = [
+        "Nguyen",
+        "Tran",
+        "Le",
+        "Pham",
+        "Huynh",
+        "Vo",
+        "Dang",
+        "Bui",
+        "Do",
+        "Hoang",
+        "Phan",
+        "Vu",
+    ]
+    f = first[seed % len(first)]
+    l = last[(seed * 7) % len(last)]
+    return f"{f} {l}"
+
+
+def _pseudo_staff_name(seed: int) -> str:
+    # Slightly different pool to avoid overlapping too much with masters
+    first = [
+        "Minh",
+        "Phuong",
+        "Quynh",
+        "Tuan",
+        "Hoa",
+        "Duc",
+        "Nhi",
+        "Son",
+        "Tam",
+        "Hien",
+        "Bao",
+        "Kiet",
+    ]
+    last = [
+        "Nguyen",
+        "Tran",
+        "Le",
+        "Pham",
+        "Huynh",
+        "Vo",
+        "Dang",
+        "Bui",
+        "Do",
+        "Hoang",
+        "Phan",
+        "Vu",
+    ]
+    f = first[seed % len(first)]
+    l = last[(seed * 5 + 3) % len(last)]
+    return f"{f} {l}"
+
+
 def _ensure_branch(
     db,
     *,
@@ -125,7 +194,7 @@ def run() -> None:
         _ensure_staff(
             db,
             email="admin@zenail.local",
-            full_name="Admin",
+            full_name=_pseudo_staff_name(1),
             role=StaffRole.admin,
             branch_id=None,
             password="admin123",
@@ -133,7 +202,7 @@ def run() -> None:
         _ensure_staff(
             db,
             email="manager.a@zenail.local",
-            full_name="Manager Central",
+            full_name=_pseudo_staff_name(2),
             role=StaffRole.manager,
             branch_id=branch_a.id,
             password="manager123",
@@ -141,7 +210,7 @@ def run() -> None:
         _ensure_staff(
             db,
             email="manager.b@zenail.local",
-            full_name="Manager Riverside",
+            full_name=_pseudo_staff_name(3),
             role=StaffRole.manager,
             branch_id=branch_b.id,
             password="manager123",
@@ -151,7 +220,7 @@ def run() -> None:
             _ensure_staff(
                 db,
                 email=f"master.a{i}@zenail.local",
-                full_name=f"Master A{i}",
+                full_name=_pseudo_master_name(100 + i),
                 role=StaffRole.master,
                 branch_id=branch_a.id,
                 password="master123",
@@ -162,7 +231,7 @@ def run() -> None:
             _ensure_staff(
                 db,
                 email=f"master.b{i}@zenail.local",
-                full_name=f"Master B{i}",
+                full_name=_pseudo_master_name(200 + i),
                 role=StaffRole.master,
                 branch_id=branch_b.id,
                 password="master123",
