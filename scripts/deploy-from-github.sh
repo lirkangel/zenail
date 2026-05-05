@@ -15,8 +15,8 @@ echo "[deploy] Cleaned .venv and __pycache__"
 
 FRONTEND_PORT="${FRONTEND_PORT:-3002}"
 BACKEND_PORT="${BACKEND_PORT:-8001}"
-PUBLIC_API_BASE_URL="${PUBLIC_API_BASE_URL:-http://10.0.0.11:8001}"
-CORS_ORIGINS="${CORS_ORIGINS:-http://10.0.0.11:3002,http://localhost:3002}"
+PUBLIC_API_BASE_URL="${PUBLIC_API_BASE_URL:-/api}"
+CORS_ORIGINS="${CORS_ORIGINS:-http://10.0.0.11:3002,http://localhost:3002,https://zenail.mathisterben.org}"
 
 FRONTEND_PORT="$FRONTEND_PORT" \
 BACKEND_PORT="$BACKEND_PORT" \
@@ -30,4 +30,3 @@ docker compose exec -T backend uv run python -m app.scripts.seed
 echo "[deploy] Migrated and seeded"
 
 echo "[deploy] Done at $(date)"
-
