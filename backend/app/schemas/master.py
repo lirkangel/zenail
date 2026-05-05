@@ -1,12 +1,12 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel
+from sqlmodel import SQLModel
 
 from app.models.enums import AppointmentStatus, RescheduleRequestStatus
 
 
-class MasterAppointmentOut(BaseModel):
+class MasterAppointmentOut(SQLModel):
     id: int
     branch_id: int
     procedure_id: int
@@ -18,13 +18,13 @@ class MasterAppointmentOut(BaseModel):
     status: AppointmentStatus
 
 
-class RescheduleRequestCreate(BaseModel):
+class RescheduleRequestCreate(SQLModel):
     appointment_id: int
     proposed_start_time: datetime
     reason: str | None = None
 
 
-class RescheduleRequestOut(BaseModel):
+class RescheduleRequestOut(SQLModel):
     id: int
     appointment_id: int
     master_id: int

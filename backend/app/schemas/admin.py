@@ -1,12 +1,13 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from pydantic import BaseModel, EmailStr
+from pydantic import EmailStr
+from sqlmodel import SQLModel
 
 from app.models.enums import AppointmentStatus, RescheduleRequestStatus, StaffRole
 
 
-class BranchCreate(BaseModel):
+class BranchCreate(SQLModel):
     name: str
     address: str | None = None
     phone: str | None = None
@@ -15,7 +16,7 @@ class BranchCreate(BaseModel):
     close_time: time = time(20, 0)
 
 
-class BranchUpdate(BaseModel):
+class BranchUpdate(SQLModel):
     name: str | None = None
     address: str | None = None
     phone: str | None = None
@@ -24,7 +25,7 @@ class BranchUpdate(BaseModel):
     close_time: time | None = None
 
 
-class BranchAdminOut(BaseModel):
+class BranchAdminOut(SQLModel):
     id: int
     name: str
     address: str | None = None
@@ -35,7 +36,7 @@ class BranchAdminOut(BaseModel):
     currency_code: str
 
 
-class StaffCreate(BaseModel):
+class StaffCreate(SQLModel):
     full_name: str
     email: EmailStr
     phone: str | None = None
@@ -45,7 +46,7 @@ class StaffCreate(BaseModel):
     is_active: bool = True
 
 
-class StaffUpdate(BaseModel):
+class StaffUpdate(SQLModel):
     full_name: str | None = None
     email: EmailStr | None = None
     phone: str | None = None
@@ -55,7 +56,7 @@ class StaffUpdate(BaseModel):
     is_active: bool | None = None
 
 
-class StaffAdminOut(BaseModel):
+class StaffAdminOut(SQLModel):
     id: int
     full_name: str
     email: str
@@ -65,7 +66,7 @@ class StaffAdminOut(BaseModel):
     is_active: bool
 
 
-class ProcedureCreate(BaseModel):
+class ProcedureCreate(SQLModel):
     name: str
     description: str | None = None
     category: str | None = None
@@ -74,7 +75,7 @@ class ProcedureCreate(BaseModel):
     is_active: bool = True
 
 
-class ProcedureUpdate(BaseModel):
+class ProcedureUpdate(SQLModel):
     name: str | None = None
     description: str | None = None
     category: str | None = None
@@ -83,7 +84,7 @@ class ProcedureUpdate(BaseModel):
     is_active: bool | None = None
 
 
-class ProcedureAdminOut(BaseModel):
+class ProcedureAdminOut(SQLModel):
     id: int
     name: str
     description: str | None = None
@@ -93,24 +94,24 @@ class ProcedureAdminOut(BaseModel):
     is_active: bool
 
 
-class BranchNonWorkingDayCreate(BaseModel):
+class BranchNonWorkingDayCreate(SQLModel):
     day: date
     reason: str | None = None
 
 
-class BranchNonWorkingDayOut(BaseModel):
+class BranchNonWorkingDayOut(SQLModel):
     id: int
     branch_id: int
     day: date
     reason: str | None = None
 
 
-class MasterProcedureLink(BaseModel):
+class MasterProcedureLink(SQLModel):
     master_id: int
     procedure_id: int
 
 
-class AdminAppointmentOut(BaseModel):
+class AdminAppointmentOut(SQLModel):
     id: int
     branch_id: int
     master_id: int
@@ -123,12 +124,12 @@ class AdminAppointmentOut(BaseModel):
     status: AppointmentStatus
 
 
-class AppointmentUpdate(BaseModel):
+class AppointmentUpdate(SQLModel):
     start_time: datetime | None = None
     status: AppointmentStatus | None = None
 
 
-class AdminRescheduleRequestOut(BaseModel):
+class AdminRescheduleRequestOut(SQLModel):
     id: int
     appointment_id: int
     master_id: int
@@ -140,16 +141,16 @@ class AdminRescheduleRequestOut(BaseModel):
     decided_at: datetime | None = None
 
 
-class RescheduleRequestDecision(BaseModel):
+class RescheduleRequestDecision(SQLModel):
     status: RescheduleRequestStatus
 
 
-class RevenueBreakdownRow(BaseModel):
+class RevenueBreakdownRow(SQLModel):
     branch_id: int
     total: Decimal
 
 
-class RevenueBreakdownOut(BaseModel):
+class RevenueBreakdownOut(SQLModel):
     from_date: str
     to_date: str
     total: Decimal

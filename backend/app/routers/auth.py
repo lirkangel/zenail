@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlmodel import Session, select
 
 from app.api.deps import get_current_staff
 from app.core.security import create_access_token, hash_password, verify_password
-from app.db.session import get_db
+from app.db.sqlmodel import get_db
 from app.models.staff import Staff
 from app.schemas.auth import LoginRequest, LoginResponse, MeResponse, MeUpdateRequest
 

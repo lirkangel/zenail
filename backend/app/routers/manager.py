@@ -2,11 +2,10 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlmodel import Session, func, select
 
 from app.api.deps import require_manager
-from app.db.session import get_db
+from app.db.sqlmodel import get_db
 from app.models.appointment import Appointment
 from app.models.branch import Branch
 from app.models.enums import (

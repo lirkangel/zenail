@@ -7,7 +7,7 @@ from alembic import context
 import os
 
 from app.core.config import settings
-from app.db.base import Base
+from sqlmodel import SQLModel
 import app.models  # noqa: F401
 
 # this is the Alembic Config object, which provides
@@ -19,7 +19,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = Base.metadata
+target_metadata = SQLModel.metadata
 
 db_url = os.getenv("DATABASE_URL") or settings.database_url
 config.set_main_option("sqlalchemy.url", db_url)

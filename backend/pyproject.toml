@@ -6,6 +6,7 @@ dependencies = [
   "fastapi",
   "uvicorn[standard]",
   "SQLAlchemy",
+  "sqlmodel",
   "alembic",
   "psycopg[binary]",
   "python-jose[cryptography]",

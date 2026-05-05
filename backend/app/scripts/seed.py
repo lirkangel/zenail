@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlmodel import Session, select
 
 from app.core.security import hash_password
-from app.db.session import SessionLocal
+from app.db.sqlmodel import engine
 from app.models.appointment import Appointment
 from app.models.appointment_procedure import AppointmentProcedure
 from app.models.branch import Branch
@@ -103,7 +103,7 @@ def _link_master_proc(db, *, master_id: int, procedure_id: int) -> None:
 
 
 def run() -> None:
-    db = SessionLocal()
+    db = Session(engine)
     try:
         branch_a = _ensure_branch(
             db,

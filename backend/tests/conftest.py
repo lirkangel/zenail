@@ -2,12 +2,10 @@ from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
-from sqlalchemy.orm import Session, sessionmaker
+from sqlmodel import Session, SQLModel, create_engine
 
-from app.db.base import Base
-from app.db.session import get_db
+from app.db.sqlmodel import get_db
 from app.main import app
 from app import models as _models  # noqa: F401
 
@@ -19,13 +17,9 @@ def db_session() -> Generator[Session, None, None]:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    Base.metadata.create_all(engine)
-    TestingSessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        yield session
 
 
 @pytest.fixture()

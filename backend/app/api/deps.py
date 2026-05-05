@@ -3,11 +3,10 @@ from collections.abc import Callable
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlmodel import Session, select
 
 from app.core.security import decode_token
-from app.db.session import get_db
+from app.db.sqlmodel import get_db
 from app.models.enums import StaffRole
 from app.models.staff import Staff
 

@@ -2,13 +2,12 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlmodel import Session, func, select
 
 from app.api.deps import require_admin
 from app.core.security import hash_password
 from app.core.config import settings
-from app.db.session import get_db
+from app.db.sqlmodel import get_db
 from app.models.appointment import Appointment
 from app.models.branch import Branch
 from app.models.branch_non_working_day import BranchNonWorkingDay

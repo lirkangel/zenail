@@ -1,11 +1,11 @@
 from datetime import datetime
 from decimal import Decimal
 import secrets
+from typing import List, Optional
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, Numeric, String
+from sqlmodel import Field, Relationship, SQLModel
 
-from app.db.base import Base
 from app.models.enums import AppointmentStatus
 
 
@@ -14,48 +14,43 @@ def generate_booking_reference() -> str:
     return "".join(secrets.choice(alphabet) for _ in range(12))
 
 
-class Appointment(Base):
+class Appointment(SQLModel, table=True):
     __tablename__ = "appointments"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
 
-    branch_id: Mapped[int] = mapped_column(ForeignKey("branches.id", ondelete="RESTRICT"), index=True)
-    master_id: Mapped[int] = mapped_column(ForeignKey("staff.id", ondelete="RESTRICT"), index=True)
-    procedure_id: Mapped[int] = mapped_column(ForeignKey("procedures.id", ondelete="RESTRICT"))
+    branch_id: int = Field(sa_column=Column(Integer, ForeignKey("branches.id", ondelete="RESTRICT"), index=True))
+    master_id: int = Field(sa_column=Column(Integer, ForeignKey("staff.id", ondelete="RESTRICT"), index=True))
+    procedure_id: int = Field(sa_column=Column(Integer, ForeignKey("procedures.id", ondelete="RESTRICT")))
 
-    client_name: Mapped[str] = mapped_column(String(200), nullable=False)
-    client_phone: Mapped[str] = mapped_column(String(50), nullable=False)
-    booking_reference: Mapped[str] = mapped_column(
-        String(32),
-        nullable=False,
-        unique=True,
-        index=True,
-        default=generate_booking_reference,
+    client_name: str = Field(sa_column=Column(String(200), nullable=False))
+    client_phone: str = Field(sa_column=Column(String(50), nullable=False))
+    booking_reference: str = Field(
+        default_factory=generate_booking_reference,
+        sa_column=Column(String(32), nullable=False, unique=True, index=True),
     )
 
-    start_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-    end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    start_time: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False, index=True))
+    end_time: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
 
-    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    status: Mapped[AppointmentStatus] = mapped_column(
-        Enum(AppointmentStatus, name="appointment_status"),
-        nullable=False,
+    price: Decimal = Field(sa_column=Column(Numeric(10, 2), nullable=False))
+    status: AppointmentStatus = Field(
         default=AppointmentStatus.scheduled,
+        sa_column=Column(Enum(AppointmentStatus, name="appointment_status"), nullable=False),
     )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=datetime.utcnow),
     )
 
-    branch = relationship("Branch")
-    master = relationship("Staff", foreign_keys=[master_id])
-    procedure = relationship("Procedure")
-    procedures = relationship(
-        "AppointmentProcedure",
-        cascade="all, delete-orphan",
-        order_by="AppointmentProcedure.sort_order",
+    branch: Optional["Branch"] = Relationship()
+    master: Optional["Staff"] = Relationship(sa_relationship_kwargs={"foreign_keys": "[Appointment.master_id]"})
+    procedure: Optional["Procedure"] = Relationship()
+    procedures: List["AppointmentProcedure"] = Relationship(
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "AppointmentProcedure.sort_order"}
     )

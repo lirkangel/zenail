@@ -1,21 +1,23 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Integer, Numeric, String
-from sqlalchemy.orm import Mapped, mapped_column
-
-from app.db.base import Base
+from sqlalchemy import Boolean, Column, DateTime, Integer, Numeric, String
+from sqlmodel import Field, SQLModel
 
 
-class Procedure(Base):
+
+class Procedure(SQLModel, table=True):
     __tablename__ = "procedures"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[str | None] = mapped_column(String(1000))
-    category: Mapped[str | None] = mapped_column(String(100))
-    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
-    price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(sa_column=Column(String(200), nullable=False))
+    description: str | None = Field(default=None, sa_column=Column(String(1000)))
+    category: str | None = Field(default=None, sa_column=Column(String(100)))
+    duration_minutes: int = Field(sa_column=Column(Integer, nullable=False))
+    price: Decimal = Field(sa_column=Column(Numeric(10, 2), nullable=False))
+    is_active: bool = Field(default=True, sa_column=Column(Boolean, nullable=False))
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
 

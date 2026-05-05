@@ -1,18 +1,13 @@
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
-
-from app.db.base import Base
+from sqlalchemy import Column, ForeignKey, Integer
+from sqlmodel import Field, SQLModel
 
 
-class MasterProcedure(Base):
+
+class MasterProcedure(SQLModel, table=True):
     __tablename__ = "master_procedures"
 
-    master_id: Mapped[int] = mapped_column(
-        ForeignKey("staff.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    procedure_id: Mapped[int] = mapped_column(
-        ForeignKey("procedures.id", ondelete="CASCADE"),
-        primary_key=True,
+    master_id: int = Field(sa_column=Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), primary_key=True))
+    procedure_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("procedures.id", ondelete="CASCADE"), primary_key=True)
     )
 

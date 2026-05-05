@@ -1,12 +1,12 @@
 from datetime import datetime, time
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from sqlmodel import Field, SQLModel
 
 from app.models.enums import AppointmentStatus
 
 
-class BranchOut(BaseModel):
+class BranchOut(SQLModel):
     id: int
     name: str
     address: str | None = None
@@ -17,12 +17,12 @@ class BranchOut(BaseModel):
     currency_code: str
 
 
-class MasterOut(BaseModel):
+class MasterOut(SQLModel):
     id: int
     full_name: str
 
 
-class ProcedureOut(BaseModel):
+class ProcedureOut(SQLModel):
     id: int
     name: str
     description: str | None = None
@@ -31,7 +31,7 @@ class ProcedureOut(BaseModel):
     price: Decimal
 
 
-class AvailabilityOut(BaseModel):
+class AvailabilityOut(SQLModel):
     master_id: int
     procedure_id: int | None = None
     procedure_ids: list[int]
@@ -42,7 +42,7 @@ class AvailabilityOut(BaseModel):
     slots: list[datetime]
 
 
-class AppointmentCreate(BaseModel):
+class AppointmentCreate(SQLModel):
     branch_id: int
     master_id: int
     procedure_id: int | None = None
@@ -52,14 +52,14 @@ class AppointmentCreate(BaseModel):
     start_time: datetime
 
 
-class AppointmentProcedureOut(BaseModel):
+class AppointmentProcedureOut(SQLModel):
     id: int
     name: str
     duration_minutes: int
     price: Decimal
 
 
-class AppointmentOut(BaseModel):
+class AppointmentOut(SQLModel):
     id: int
     booking_reference: str
     branch_id: int

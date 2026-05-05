@@ -4,8 +4,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlmodel import Session, select
 
 from app.models.appointment import Appointment
 from app.models.appointment_procedure import AppointmentProcedure

@@ -1,11 +1,10 @@
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlmodel import Session, select
 
 from app.api.deps import require_master
-from app.db.session import get_db
+from app.db.sqlmodel import get_db
 from app.models.appointment import Appointment
 from app.models.branch import Branch
 from app.models.enums import AppointmentStatus, RescheduleRequestStatus, StaffRole
