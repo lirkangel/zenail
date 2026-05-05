@@ -18,7 +18,7 @@ services:
       JWT_SECRET: dev-secret-change-me
       JWT_EXPIRES_MINUTES: "10080"
       # For LAN access (e.g. http://10.0.0.11:5173), make sure your origin is included here.
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3002,http://10.0.0.11:5173,http://10.0.0.11:3002}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3002,http://10.0.0.11:5173,http://10.0.0.11:3002,https://zenail.mathisterben.org}
     depends_on:
       - db
     ports:
@@ -32,6 +32,7 @@ services:
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
     environment:
       # When accessing from another device on LAN, set PUBLIC_API_BASE_URL=http://10.0.0.11:8000
+      # For HTTPS behind a reverse proxy that routes /api -> backend, you can set PUBLIC_API_BASE_URL=/api
       VITE_API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:8000}
     depends_on:
       - backend

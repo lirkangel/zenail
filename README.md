@@ -123,6 +123,11 @@ Ghi chú khi truy cập từ thiết bị khác trong LAN:
 
 - Set `PUBLIC_API_BASE_URL=http://10.0.0.11:8000` để frontend gọi đúng backend (tránh gọi `localhost` trên máy client).
 
+Ghi chú khi chạy sau reverse proxy/HTTPS (vd `https://zenail.mathisterben.org`):
+
+- Nên cấu hình reverse proxy route `"/api"` → backend (port `8000`).
+- Sau đó set `PUBLIC_API_BASE_URL=/api` để frontend gọi API theo **same-origin** (tránh bị browser block mixed-content khi frontend chạy HTTPS nhưng backend là HTTP).
+
 ## Seed dữ liệu demo
 
 Sau khi container đã lên:
