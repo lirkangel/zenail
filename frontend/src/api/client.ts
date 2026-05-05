@@ -11,12 +11,25 @@ async function parseError(res: Response): Promise<ApiError> {
   }
 }
 
+function buildApiUrl(path: string): string {
+  if (/^https?:\/\//.test(path)) return path
+
+  const base = API_BASE_URL.replace(/\/$/, '')
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+
+  if (base.endsWith('/api') && normalizedPath.startsWith('/api')) {
+    return `${base.slice(0, -4)}${normalizedPath}` || normalizedPath
+  }
+
+  return `${base}${normalizedPath}` || normalizedPath
+}
+
 export async function apiFetch<T>(
   path: string,
   opts: RequestInit & { token?: string } = {},
 ): Promise<T> {
   const { token, headers, ...rest } = opts
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetch(buildApiUrl(path), {
     ...rest,
     headers: {
       'Content-Type': 'application/json',
@@ -28,4 +41,3 @@ export async function apiFetch<T>(
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
 }
-

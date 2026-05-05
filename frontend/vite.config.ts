@@ -6,5 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     allowedHosts: ['zenail.mathisterben.org'],
+    proxy: {
+      '/api': {
+        target: 'http://backend:8000',
+        changeOrigin: true,
+      },
+    },
   },
 })
