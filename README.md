@@ -190,6 +190,11 @@ File cấu hình:
 
 ## File nên đọc đầu tiên
 
+### Setup nhanh theo từng thư mục
+
+- Backend: `backend/README.md`
+- Frontend: `frontend/README.md`
+
 ### Backend
 
 - `backend/app/main.py`
