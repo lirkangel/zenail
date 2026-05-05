@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin
 from app.core.security import hash_password
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.appointment import Appointment
 from app.models.branch import Branch
@@ -293,6 +294,7 @@ def list_branches(db: Session = Depends(get_db), _: Staff = Depends(require_admi
             timezone=b.timezone,
             open_time=b.open_time,
             close_time=b.close_time,
+            currency_code=settings.currency_code,
         )
         for b in branches
     ]
@@ -319,6 +321,7 @@ def create_branch(payload: BranchCreate, db: Session = Depends(get_db), _: Staff
         timezone=b.timezone,
         open_time=b.open_time,
         close_time=b.close_time,
+        currency_code=settings.currency_code,
     )
 
 
@@ -346,6 +349,7 @@ def update_branch(
         timezone=b.timezone,
         open_time=b.open_time,
         close_time=b.close_time,
+        currency_code=settings.currency_code,
     )
 
 

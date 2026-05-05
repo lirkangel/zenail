@@ -14,6 +14,7 @@ class BranchOut(BaseModel):
     timezone: str
     open_time: time
     close_time: time
+    currency_code: str
 
 
 class MasterOut(BaseModel):

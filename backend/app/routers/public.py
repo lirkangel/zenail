@@ -33,6 +33,7 @@ from app.services.booking import (
     get_branch_timezone,
     iter_branch_slots,
 )
+from app.core.config import settings
 
 router = APIRouter(tags=["public"])
 
@@ -91,6 +92,7 @@ def list_branches(db: Session = Depends(get_db)) -> list[BranchOut]:
             timezone=b.timezone,
             open_time=b.open_time,
             close_time=b.close_time,
+            currency_code=settings.currency_code,
         )
         for b in branches
     ]

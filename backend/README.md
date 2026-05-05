@@ -20,6 +20,7 @@ Biến quan trọng:
 - `JWT_SECRET`: secret để ký JWT
 - `JWT_EXPIRES_MINUTES`: thời gian hết hạn JWT (phút)
 - `CORS_ORIGINS`: danh sách origin cho frontend (phân tách bằng dấu phẩy)
+- `CURRENCY_CODE`: ISO currency code (mặc định `VND`)
 
 ## Chạy local (không dùng Docker)
 
