@@ -241,7 +241,7 @@ Frontend client types:
 Frontend UI:
 
 - `frontend/src/pages/guest/BookConfirmPage.tsx` — this is the actual guest submit screen (not "BookingForm"). Add an optional "Email (tuỳ chọn)" input next to name/phone, validate format only when non-empty, include it in the create-appointment call. Empty string should be sent as `null`/omitted, not `""`.
-- Booking state in `frontend/src/state/booking.tsx` (or wherever the form state lives — confirm during implementation): carry `client_email` alongside `client_name` / `client_phone`.
+- Booking form state: today `frontend/src/state/booking.ts` only persists `booking_reference` after a successful create — it does not hold the in-progress form fields. The name/phone inputs live as local component state in `BookConfirmPage.tsx`, so adding `client_email` there is sufficient. No change to `booking.ts` is required unless we choose to lift form state during implementation.
 
 No new staff UI surface in phase 1 — notification rows are visible only via DB / logs.
 
@@ -317,7 +317,7 @@ Manual smoke after deploy:
 - Hooks in `app/routers/admin.py` and `app/routers/manager.py`.
 - Endpoint `POST /api/admin/notifications/run-dispatcher`.
 - Settings + `.env.example` update.
-- Frontend: optional email field on `BookingForm` + booking API client type.
+- Frontend: optional email input added to `frontend/src/pages/guest/BookConfirmPage.tsx`; matching `client_email?: string` on the booking-create payload type in `frontend/src/api/types.ts`.
 - Tests as above.
 
 ## Open items deferred to later phases
