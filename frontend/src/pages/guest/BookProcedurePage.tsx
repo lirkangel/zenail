@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { apiFetch } from '../../api/client'
 import type { Procedure } from '../../api/types'
@@ -10,10 +10,16 @@ import { useT } from '../../state/useT'
 
 export function BookProcedurePage() {
   const t = useT()
-  const [sp] = useSearchParams()
+  const [sp, setSp] = useSearchParams()
   const branchId = sp.get('branch')
   const masterId = sp.get('master')
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const selectedIds = useMemo(() => {
+    const raw = sp.get('procedures') ?? sp.get('procedure') ?? ''
+    return raw
+      .split(',')
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0)
+  }, [sp])
   const q = useQuery({
     queryKey: ['procedures', masterId],
     enabled: !!masterId,
@@ -25,6 +31,21 @@ export function BookProcedurePage() {
   )
   const totalPrice = selected.reduce((sum, p) => sum + Number(p.price), 0)
   const totalDuration = selected.reduce((sum, p) => sum + p.duration_minutes, 0)
+
+  const toggleProcedure = (procedureId: number) => {
+    const nextIds = selectedIds.includes(procedureId)
+      ? selectedIds.filter((id) => id !== procedureId)
+      : [...selectedIds, procedureId]
+
+    const next = new URLSearchParams(sp)
+    next.delete('procedure')
+    if (nextIds.length) {
+      next.set('procedures', nextIds.join(','))
+    } else {
+      next.delete('procedures')
+    }
+    setSp(next, { replace: true })
+  }
 
   return (
     <Page title={t('guest.procedure.title')} subtitle={t('guest.procedure.subtitle')}>
@@ -39,11 +60,7 @@ export function BookProcedurePage() {
             key={p.id}
             type="button"
             className="block w-full text-left"
-            onClick={() =>
-              setSelectedIds((current) =>
-                current.includes(p.id) ? current.filter((id) => id !== p.id) : [...current, p.id],
-              )
-            }
+            onClick={() => toggleProcedure(p.id)}
           >
             <Card
               className={[

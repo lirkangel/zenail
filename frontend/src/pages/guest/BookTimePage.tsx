@@ -10,15 +10,27 @@ import { useT } from '../../state/useT'
 
 export function BookTimePage() {
   const t = useT()
-  const [sp] = useSearchParams()
+  const [sp, setSp] = useSearchParams()
   const branchId = sp.get('branch')
   const masterId = sp.get('master')
   const procedureIds = sp.get('procedures') ?? sp.get('procedure')
+  const dayParam = sp.get('day')
 
   const today = startOfDay(new Date())
-  const [day, setDay] = useState(() => today)
+  const [day, setDay] = useState(() => {
+    if (!dayParam) return today
+    const parsed = startOfDay(new Date(`${dayParam}T00:00:00`))
+    return Number.isNaN(parsed.getTime()) ? today : parsed
+  })
   const dayStr = useMemo(() => format(day, 'yyyy-MM-dd'), [day])
   const isToday = format(day, 'yyyy-MM-dd') <= format(today, 'yyyy-MM-dd')
+
+  const setSelectedDay = (nextDay: Date) => {
+    setDay(nextDay)
+    const next = new URLSearchParams(sp)
+    next.set('day', format(nextDay, 'yyyy-MM-dd'))
+    setSp(next, { replace: true })
+  }
 
   const q = useQuery({
     queryKey: ['availability', masterId, procedureIds, dayStr],
@@ -40,7 +52,7 @@ export function BookTimePage() {
           type="button"
           disabled={isToday}
           className="rounded-xl border border-rose-200 bg-white/90 px-3 py-2 text-xs font-medium text-rose-800 shadow-sm disabled:opacity-40"
-          onClick={() => setDay((d) => addDays(d, -1))}
+          onClick={() => setSelectedDay(addDays(day, -1))}
         >
           {t('common.prev')}
         </button>
@@ -50,7 +62,7 @@ export function BookTimePage() {
         <button
           type="button"
           className="rounded-xl border border-rose-200 bg-white/90 px-3 py-2 text-xs font-medium text-rose-800 shadow-sm"
-          onClick={() => setDay((d) => addDays(d, 1))}
+          onClick={() => setSelectedDay(addDays(day, 1))}
         >
           {t('common.next')}
         </button>
@@ -77,7 +89,7 @@ export function BookTimePage() {
         {(q.data?.slots ?? []).slice(0, 24).map((slot) => (
           <Link
             key={slot}
-            to={`/book/confirm?branch=${branchId}&master=${masterId}&procedures=${procedureIds}&start_time=${encodeURIComponent(
+            to={`/book/confirm?branch=${branchId}&master=${masterId}&procedures=${procedureIds}&day=${dayStr}&start_time=${encodeURIComponent(
               slot,
             )}`}
           >
