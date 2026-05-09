@@ -1,0 +1,3 @@
+[Zenail] Lịch khách bị huỷ
+
+Lịch của khách {{ client_name }} ({{ start_local }}) đã huỷ. Mã: {{ booking_reference }}.

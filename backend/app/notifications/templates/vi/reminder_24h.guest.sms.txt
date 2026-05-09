@@ -1,0 +1,1 @@
+[Zenail] {{ client_name }}, ban co lich {{ start_local }} tai {{ branch_name }} voi {{ master_name }}. Ma: {{ booking_reference }}.

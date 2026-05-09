@@ -1,0 +1,3 @@
+[Zenail] Slot trống
+
+Lịch của {{ client_name }} ({{ start_local }}, thợ {{ master_name }}) đã huỷ. Slot có thể fill.

@@ -1,0 +1,1 @@
+[Zenail] Lich hen {{ start_local }} tai {{ branch_name }} da huy. Ma: {{ booking_reference }}.

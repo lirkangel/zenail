@@ -1,0 +1,1 @@
+{{ client_name }} có lịch lúc {{ start_local }} tại {{ branch_name }} với {{ master_name }}. Mã: {{ booking_reference }}.

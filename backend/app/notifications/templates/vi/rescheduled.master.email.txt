@@ -1,0 +1,3 @@
+[Zenail] Lịch khách dời
+
+Khách {{ client_name }}: {{ old_start_local }} -> {{ start_local }}. Mã: {{ booking_reference }}.

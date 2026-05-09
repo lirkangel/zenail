@@ -1,0 +1,1 @@
+Lịch hẹn {{ start_local }} tại {{ branch_name }} đã huỷ. Mã: {{ booking_reference }}.

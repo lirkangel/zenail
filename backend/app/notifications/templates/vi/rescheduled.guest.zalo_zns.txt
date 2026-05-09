@@ -1,0 +1,1 @@
+Lịch hẹn dời từ {{ old_start_local }} sang {{ start_local }} tại {{ branch_name }}. Mã: {{ booking_reference }}.

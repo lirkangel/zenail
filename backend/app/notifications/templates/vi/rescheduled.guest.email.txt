@@ -1,0 +1,4 @@
+[Zenail] Lịch hẹn đã dời
+
+Xin chào {{ client_name }}, lịch hẹn của bạn đã được dời từ {{ old_start_local }} sang {{ start_local }} tại {{ branch_name }} với thợ {{ master_name }}.
+Mã đặt lịch: {{ booking_reference }}.

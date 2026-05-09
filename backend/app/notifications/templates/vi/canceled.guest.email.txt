@@ -1,0 +1,5 @@
+[Zenail] Lịch hẹn đã huỷ
+
+Xin chào {{ client_name }}, lịch hẹn vào {{ start_local }} tại {{ branch_name }} đã được huỷ.
+Mã đặt lịch: {{ booking_reference }}.
+Vui lòng đặt lịch mới khi cần.

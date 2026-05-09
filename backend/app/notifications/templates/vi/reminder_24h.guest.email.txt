@@ -1,0 +1,6 @@
+[Zenail] Nhắc lịch ngày mai
+
+Xin chào {{ client_name }},
+Nhắc bạn có lịch hẹn vào {{ start_local }} tại {{ branch_name }} với thợ {{ master_name }}.
+Mã đặt lịch: {{ booking_reference }}.
+Hẹn gặp bạn!

@@ -16,6 +16,7 @@ dependencies = [
   "pydantic-settings",
   "email-validator",
   "python-multipart",
+  "jinja2",
 ]
 
 [dependency-groups]

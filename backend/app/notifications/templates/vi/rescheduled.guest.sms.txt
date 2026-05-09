@@ -1,0 +1,1 @@
+[Zenail] Lich hen doi: {{ old_start_local }} -> {{ start_local }} tai {{ branch_name }}. Ma: {{ booking_reference }}.
