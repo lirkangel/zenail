@@ -8,8 +8,10 @@ Status: Approved (design)
 Send transactional notifications to guests, masters, and managers for three events:
 
 1. **Reminder 24h** before appointment start (guest only).
-2. **Cancelled** appointment (guest + assigned master + branch managers).
+2. **Canceled** appointment (guest + assigned master + branch managers).
 3. **Rescheduled** appointment (guest + assigned master).
+
+Naming note: the existing `AppointmentStatus` enum spells the value `canceled` (single `l`) in `backend/app/models/enums.py`. The new notification `kind` enum, table values, code identifiers, template keys, and tests all use the same spelling — `canceled` — to avoid drift.
 
 Booking confirmation is **out of scope** — guest already sees booking reference on the success screen.
 
@@ -29,7 +31,7 @@ Channels: email, SMS (VN gateway, e.g. eSMS/SpeedSMS), Zalo ZNS. Master/manager 
 ```
 +-------------------+       +----------------------+       +------------------+
 | routers (admin/   | call  | NotificationService  | write | notifications    |
-|  manager) cancel/ |------>| .on_cancelled(...)   |------>| table (outbox)   |
+|  manager) cancel/ |------>| .on_canceled(...)   |------>| table (outbox)   |
 |  reschedule       |       | .on_rescheduled(...) |       +--------+---------+
 +-------------------+       +----------------------+                |
                                                                     | poll
@@ -51,10 +53,10 @@ Components:
 
 - **`app/notifications/providers/`** — `base.NotificationProvider` interface plus concrete adapters. Phase 1 ships only `LogProvider`; SMTP/eSMS/Zalo classes are stubs raising `NotImplementedError`.
 - **`app/notifications/templates/`** — Jinja-rendered text files keyed by `template_key`, e.g. `reminder_24h.guest.sms.vi.txt`.
-- **`app/services/notifications.py`** — domain entry points (`on_cancelled`, `on_rescheduled`, `enqueue_reminder`). Resolves recipients, picks templates per channel, writes outbox rows. Pure DB writes; never calls providers directly.
+- **`app/services/notifications.py`** — domain entry points (`on_canceled`, `on_rescheduled`, `enqueue_reminder`). Resolves recipients, picks templates per channel, writes outbox rows. Pure DB writes; never calls providers directly.
 - **`app/notifications/scheduler.py`** — APScheduler `AsyncIOScheduler` started in FastAPI lifespan. Two jobs: `enqueue_reminders` (5 min) and `dispatch_pending` (1 min).
 - **`app/models/notification.py`** — SQLModel for the `notifications` outbox.
-- **Hooks** in `app/routers/admin.py` and `app/routers/manager.py` at appointment cancel and reschedule endpoints.
+- **Hooks** in `app/routers/admin.py` and `app/routers/manager.py` at four sites: appointment PATCH (cancel branch), appointment PATCH (reschedule branch), and `decide_reschedule_request` (approve branch) on both routers. See the Cancel / Reschedule flow sections for exact line refs.
 
 ## Data model
 
@@ -64,7 +66,7 @@ Components:
 |---|---|---|
 | `id` | int PK | |
 | `appointment_id` | FK appointments(id) ON DELETE CASCADE | indexed |
-| `kind` | enum `reminder_24h \| cancelled \| rescheduled` | |
+| `kind` | enum `reminder_24h \| canceled \| rescheduled` | |
 | `recipient_role` | enum `guest \| master \| manager` | |
 | `recipient_address` | varchar(200) | snapshot of phone/email at enqueue time |
 | `channel` | enum `email \| sms \| zalo_zns` | |
@@ -80,7 +82,7 @@ Components:
 Indexes / constraints:
 
 - Index `(status, scheduled_at)` for dispatcher.
-- **Partial unique** on `(appointment_id, recipient_role, channel)` WHERE `kind='reminder_24h'` — idempotency for reminders only. `cancelled` / `rescheduled` may have multiple rows (e.g. repeated reschedules).
+- **Partial unique** on `(appointment_id, recipient_role, channel)` WHERE `kind='reminder_24h'` — idempotency for reminders only. `canceled` / `rescheduled` may have multiple rows (e.g. repeated reschedules).
 
 ### Modified table `appointments`
 
@@ -92,7 +94,7 @@ One Alembic revision: create `notifications` table + enums + indexes, add `clien
 
 ## Recipient & channel matrix
 
-| Recipient | reminder_24h | cancelled | rescheduled |
+| Recipient | reminder_24h | canceled | rescheduled |
 |---|---|---|---|
 | guest | email + sms + zns | email + sms + zns | email + sms + zns |
 | master | — | email | email |
@@ -113,25 +115,32 @@ Path: `app/notifications/templates/{template_key}.{lang}.txt`. Phase 1 ships onl
 Required keys for phase 1:
 
 - `reminder_24h.guest.email`, `reminder_24h.guest.sms`, `reminder_24h.guest.zalo_zns`
-- `cancelled.guest.email`, `cancelled.guest.sms`, `cancelled.guest.zalo_zns`
-- `cancelled.master.email`
-- `cancelled.manager.email`
+- `canceled.guest.email`, `canceled.guest.sms`, `canceled.guest.zalo_zns`
+- `canceled.master.email`
+- `canceled.manager.email`
 - `rescheduled.guest.email`, `rescheduled.guest.sms`, `rescheduled.guest.zalo_zns`
 - `rescheduled.master.email`
 
 Email templates produce a single string with subject as the first line and an empty line before the body, parsed at send time. SMS / ZNS templates produce a single short string. ZNS will eventually require a server-registered template id; the `template_key → ZNS template id` mapping lives in settings (`zalo_zns_template_ids`).
 
-Render context (`payload_json`) includes: `client_name`, `branch_name`, `master_name`, `procedures` (list of names), `start_local` (formatted in branch timezone), `booking_reference`, plus event-specific fields (`old_start_local` for reschedule, `cancel_reason` for cancel if provided).
+Render context (`payload_json`) includes: `client_name`, `branch_name`, `master_name`, `procedures` (list of names), `start_local` (formatted in branch timezone), `booking_reference`, plus event-specific fields (`old_start_local` for reschedule). No `cancel_reason` in phase 1 — current cancel payloads (`backend/app/schemas/manager.py`, the admin and manager appointment PATCH handlers in `backend/app/routers/admin.py:79` / `backend/app/routers/manager.py:74`) do not carry one and we are not adding the field now. Add it later if/when the cancel UI grows a reason input.
 
 ## Flows
 
 ### Cancel
 
-1. Router updates `appointment.status='cancelled'` in current DB transaction.
-2. `notification_service.on_cancelled(appointment, session)`:
+1. Router updates `appointment.status='canceled'` in current DB transaction.
+2. `notification_service.on_canceled(appointment, session)`:
    - Marks all existing `pending` notifications for that appointment as `skipped` with `last_error='superseded by cancel'`.
    - Inserts new rows: guest×3 channels, master×email, managers×email. `scheduled_at = now()`.
 3. Transaction commits. Dispatcher picks up rows on next tick.
+
+Cancel hook sites (every place an appointment transitions to `canceled`):
+
+- `backend/app/routers/admin.py` — admin appointment PATCH (`update_appointment` around line 79) when `payload.status == AppointmentStatus.canceled`.
+- `backend/app/routers/manager.py` — manager appointment PATCH (around line 74) when `payload.status == AppointmentStatus.canceled` (matches the existing branch at `manager.py:87-88`).
+
+If a future endpoint cancels appointments, it must call `on_canceled` too. Implementation note: prefer wrapping the status change in a small helper (e.g. `appointment_service.cancel(appt, session)`) that always fires the hook, so new call sites cannot forget.
 
 ### Reschedule
 
@@ -141,6 +150,13 @@ Render context (`payload_json`) includes: `client_name`, `branch_name`, `master_
    - Marks pending `kind='rescheduled'` rows for this appointment as `skipped` (newest data wins; we'll re-insert).
    - Inserts new `rescheduled` rows: guest×3, master×email, with `scheduled_at = now()`.
    - Inserts a fresh `reminder_24h` set (guest×3) with `scheduled_at = max(now(), new_start - 24h)`.
+
+Reschedule hook sites — there are **two** distinct paths in this repo and both must call `on_rescheduled`:
+
+- **Direct PATCH** by admin/manager: `backend/app/routers/admin.py` (`update_appointment` ~line 79) and `backend/app/routers/manager.py` (~line 74) when `start_time` changes.
+- **Reschedule-request approval** (easy to miss): `backend/app/routers/admin.py:194` (`decide_reschedule_request`) and `backend/app/routers/manager.py:204` (`decide_reschedule_request`). When `payload.status == RescheduleRequestStatus.approved`, the appointment's `start_time` / `end_time` are mutated. The hook must fire on the approval branch with the pre-mutation `old_start`.
+
+Same recommendation as cancel: route both paths through a single `appointment_service.reschedule(appt, new_start, new_end, session)` helper that emits the notification, so future call sites cannot drift.
 
 ### Reminder enqueue (`enqueue_reminders`)
 
@@ -211,10 +227,23 @@ Defaults (`log` providers, enabled=true) ship safely: nothing leaves the box, bu
 
 `POST /api/admin/notifications/run-dispatcher` — admin-only, runs `dispatch_pending` once synchronously and returns `{processed: N, sent: x, failed: y, skipped: z}`. Handy for manual smoke tests so we don't have to wait for the 1-minute tick.
 
-## Frontend changes
+## Frontend & API changes
 
-- `BookingForm`: optional "Email (tuỳ chọn)" field. Validated as email if non-empty. Wired into `POST /api/appointments` payload as `client_email`.
-- No new staff UI surface in phase 1 — notification rows are visible only via DB / logs.
+Backend request/response schemas:
+
+- `backend/app/schemas/public.py` — `AppointmentCreate` (~line 45): add `client_email: str | None = None`. Backend should validate as email if non-empty (Pydantic `EmailStr` or a small validator) and persist to `appointment.client_email`.
+- `backend/app/schemas/public.py` — `AppointmentOut` and any other response schemas that already echo `client_name` / `client_phone`: add `client_email: str | None`. Same for the staff-facing response builders in `backend/app/services/appointment_out.py` if they expose client contact info.
+
+Frontend client types:
+
+- `frontend/src/api/types.ts` (~line 51, alongside `client_name` / `client_phone`): add `client_email?: string` to the booking create payload type and to the appointment response type that mirrors it.
+
+Frontend UI:
+
+- `frontend/src/pages/guest/BookConfirmPage.tsx` — this is the actual guest submit screen (not "BookingForm"). Add an optional "Email (tuỳ chọn)" input next to name/phone, validate format only when non-empty, include it in the create-appointment call. Empty string should be sent as `null`/omitted, not `""`.
+- Booking state in `frontend/src/state/booking.tsx` (or wherever the form state lives — confirm during implementation): carry `client_email` alongside `client_name` / `client_phone`.
+
+No new staff UI surface in phase 1 — notification rows are visible only via DB / logs.
 
 ## Error handling
 
@@ -243,7 +272,7 @@ Sufficient to debug from `docker compose logs backend`. No metrics/dashboard in 
 
 Unit tests (`backend/tests/test_notifications_service.py`):
 
-- `on_cancelled` produces correct row counts, with/without `client_email`, with/without managers.
+- `on_canceled` produces correct row counts, with/without `client_email`, with/without managers, and marks any pre-existing pending rows for that appointment as `skipped`.
 - `on_rescheduled` removes pending reminders and inserts fresh ones; reminder `scheduled_at` matches `new_start - 24h` or `now()` when within 24h.
 - Recipient resolution: missing master email → skipped row with reason; branch without manager → no manager rows.
 - Template rendering: snapshot 1–2 templates with a fixed payload.
@@ -253,7 +282,7 @@ Scheduler / dispatcher tests (`backend/tests/test_notifications_scheduler.py`) �
 
 - `enqueue_reminders` only enqueues for `scheduled` appointments inside the 23–24h window.
 - Idempotent across two calls.
-- Skips `cancelled` appointments.
+- Skips `canceled` appointments.
 - `dispatch_pending` happy path: `pending + scheduled_at <= now` → provider called, row marked `sent`.
 - Transient error → `attempt_count++`, `scheduled_at` pushed by backoff, still pending.
 - Permanent error → `failed` with one attempt.
@@ -261,8 +290,10 @@ Scheduler / dispatcher tests (`backend/tests/test_notifications_scheduler.py`) �
 
 Integration tests (FastAPI test client, SQLite):
 
-- `POST /api/admin/appointments/{id}/cancel` writes `cancelled` notification rows.
+- `PATCH /api/admin/appointments/{id}` with `status=canceled` writes `canceled` notification rows.
 - `PATCH /api/admin/appointments/{id}` reschedule writes `rescheduled` rows + replaces pending reminder.
+- `PATCH /api/admin/reschedule-requests/{id}` with `status=approved` writes `rescheduled` rows (regression guard for the approval path that's easy to miss).
+- Manager equivalents: `PATCH /api/manager/appointments/{id}` cancel + reschedule, and `PATCH /api/manager/reschedule-requests/{id}` approve.
 - `POST /api/admin/notifications/run-dispatcher` flips pending rows to `sent` (via `LogProvider`).
 - Booking with `client_email` accepted; without email, guest email row is `skipped`.
 
