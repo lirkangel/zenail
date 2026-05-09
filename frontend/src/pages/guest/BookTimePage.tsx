@@ -34,6 +34,14 @@ export function BookTimePage() {
   })
   const dayStr = useMemo(() => format(day, 'yyyy-MM-dd'), [day])
   const isToday = format(day, 'yyyy-MM-dd') <= format(today, 'yyyy-MM-dd')
+  const selectedStartTime =
+    rememberedDraft &&
+    rememberedDraft.branch_id === branchId &&
+    rememberedDraft.master_id === masterId &&
+    rememberedDraft.procedures === procedureIds &&
+    rememberedDraft.day === dayStr
+      ? rememberedDraft.start_time ?? null
+      : null
 
   const setSelectedDay = (nextDay: Date) => {
     setDay(nextDay)
@@ -46,8 +54,20 @@ export function BookTimePage() {
         master_id: masterId,
         procedures: procedureIds,
         day: format(nextDay, 'yyyy-MM-dd'),
+        start_time: undefined,
       })
     }
+  }
+
+  const rememberSelectedTime = (slot: string) => {
+    if (!branchId || !masterId || !procedureIds) return
+    saveGuestBookingDraft({
+      branch_id: branchId,
+      master_id: masterId,
+      procedures: procedureIds,
+      day: dayStr,
+      start_time: slot,
+    })
   }
 
   const q = useQuery({
@@ -107,11 +127,19 @@ export function BookTimePage() {
         {(q.data?.slots ?? []).slice(0, 24).map((slot) => (
           <Link
             key={slot}
+            onClick={() => rememberSelectedTime(slot)}
             to={`/book/confirm?branch=${branchId}&master=${masterId}&procedures=${procedureIds}&day=${dayStr}&start_time=${encodeURIComponent(
               slot,
             )}`}
           >
-            <Card className="py-3 text-center transition hover:border-rose-300 hover:shadow-studio">
+            <Card
+              className={[
+                'py-3 text-center transition hover:border-rose-300 hover:shadow-studio',
+                selectedStartTime === slot
+                  ? 'border-rose-400 ring-2 ring-rose-300/60 shadow-studio'
+                  : '',
+              ].join(' ')}
+            >
               <div className="text-sm font-semibold text-rose-950">
                 {new Date(slot).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>

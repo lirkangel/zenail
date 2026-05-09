@@ -12,6 +12,7 @@ export type GuestBookingDraft = {
   master_id: string
   procedures: string
   day: string
+  start_time?: string
 }
 
 export function saveLastBooking(appt: Appointment) {
