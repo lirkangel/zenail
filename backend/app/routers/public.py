@@ -254,6 +254,7 @@ def create_appointment(payload: AppointmentCreate, db: Session = Depends(get_db)
         procedure_id=selected_ids[0],
         client_name=payload.client_name,
         client_phone=payload.client_phone,
+        client_email=payload.client_email,
         start_time=start,
         end_time=end,
         price=total_price,

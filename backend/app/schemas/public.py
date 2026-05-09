@@ -49,6 +49,7 @@ class AppointmentCreate(SQLModel):
     procedure_ids: list[int] = Field(default_factory=list)
     client_name: str
     client_phone: str
+    client_email: str | None = None
     start_time: datetime
 
 
@@ -70,6 +71,7 @@ class AppointmentOut(SQLModel):
     procedures: list[AppointmentProcedureOut]
     client_name: str
     client_phone: str
+    client_email: str | None = None
     start_time: datetime
     end_time: datetime
     total_duration_minutes: int

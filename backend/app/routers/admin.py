@@ -633,3 +633,12 @@ def unlink_master_procedure(
     if link:
         db.delete(link)
         db.commit()
+
+
+@router.post("/admin/notifications/run-dispatcher")
+async def run_notifications_dispatcher(
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> dict:
+    from app.notifications.scheduler import dispatch_pending
+    return await dispatch_pending(session_factory=lambda: db)

@@ -37,6 +37,7 @@ def appointment_to_out(appt: Appointment) -> AppointmentOut:
         procedures=procedures,
         client_name=appt.client_name,
         client_phone=appt.client_phone,
+        client_email=appt.client_email,
         start_time=appt.start_time,
         end_time=appt.end_time,
         total_duration_minutes=sum(p.duration_minutes for p in procedures),
