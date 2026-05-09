@@ -174,3 +174,41 @@ def _enqueue_with_session(session: Session) -> int:
         inserted += len(rows)
     session.commit()
     return inserted
+
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+
+_scheduler: AsyncIOScheduler | None = None
+
+
+def start_scheduler() -> None:
+    global _scheduler
+    if _scheduler is not None:
+        return
+    s = AsyncIOScheduler(timezone="UTC")
+
+    async def _enqueue_job() -> None:
+        try:
+            enqueue_reminders()
+        except Exception:
+            _logger.exception("enqueue_reminders failed")
+
+    async def _dispatch_job() -> None:
+        try:
+            await dispatch_pending()
+        except Exception:
+            _logger.exception("dispatch_pending failed")
+
+    s.add_job(_enqueue_job, "interval", minutes=5, id="enqueue_reminders")
+    s.add_job(_dispatch_job, "interval", minutes=1, id="dispatch_pending")
+    s.start()
+    _scheduler = s
+
+
+def stop_scheduler() -> None:
+    global _scheduler
+    if _scheduler is None:
+        return
+    _scheduler.shutdown(wait=False)
+    _scheduler = None

@@ -1,3 +1,7 @@
+import os
+
+os.environ["NOTIFICATIONS_ENABLED"] = "false"
+
 from collections.abc import Generator
 
 import pytest
@@ -31,4 +35,3 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
-
