@@ -6,6 +6,7 @@ Create Date: 2026-05-09
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 revision = "a1f3f51be985"
@@ -14,16 +15,29 @@ branch_labels = None
 depends_on = None
 
 
-notification_kind = sa.Enum(
+notification_kind = postgresql.ENUM(
+    "reminder_24h", "canceled", "rescheduled", name="notification_kind"
+)
+notification_recipient_role = postgresql.ENUM(
+    "guest", "master", "manager", name="notification_recipient_role"
+)
+notification_channel = postgresql.ENUM(
+    "email", "sms", "zalo_zns", name="notification_channel"
+)
+notification_status = postgresql.ENUM(
+    "pending", "sent", "failed", "skipped", name="notification_status"
+)
+
+notification_kind_column = postgresql.ENUM(
     "reminder_24h", "canceled", "rescheduled", name="notification_kind", create_type=False
 )
-notification_recipient_role = sa.Enum(
+notification_recipient_role_column = postgresql.ENUM(
     "guest", "master", "manager", name="notification_recipient_role", create_type=False
 )
-notification_channel = sa.Enum(
+notification_channel_column = postgresql.ENUM(
     "email", "sms", "zalo_zns", name="notification_channel", create_type=False
 )
-notification_status = sa.Enum(
+notification_status_column = postgresql.ENUM(
     "pending", "sent", "failed", "skipped", name="notification_status", create_type=False
 )
 
@@ -48,15 +62,15 @@ def upgrade() -> None:
             sa.ForeignKey("appointments.id", ondelete="CASCADE"),
             nullable=False,
         ),
-        sa.Column("kind", notification_kind, nullable=False),
-        sa.Column("recipient_role", notification_recipient_role, nullable=False),
+        sa.Column("kind", notification_kind_column, nullable=False),
+        sa.Column("recipient_role", notification_recipient_role_column, nullable=False),
         sa.Column("recipient_address", sa.String(length=200), nullable=False),
-        sa.Column("channel", notification_channel, nullable=False),
+        sa.Column("channel", notification_channel_column, nullable=False),
         sa.Column("template_key", sa.String(length=64), nullable=False),
         sa.Column("payload_json", sa.JSON(), nullable=False, server_default="{}"),
         sa.Column(
             "status",
-            notification_status,
+            notification_status_column,
             nullable=False,
             server_default="pending",
         ),
