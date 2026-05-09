@@ -1234,7 +1234,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "alembic" },
-    { name = "apscheduler" },
+    { name = "apscheduler", specifier = ">=3,<4" },
     { name = "email-validator" },
     { name = "fastapi" },
     { name = "passlib" },

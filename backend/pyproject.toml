@@ -8,7 +8,7 @@ dependencies = [
   "SQLAlchemy",
   "sqlmodel",
   "alembic",
-  "apscheduler",
+  "apscheduler>=3,<4",
   "psycopg[binary]",
   "python-jose[cryptography]",
   "passlib",
