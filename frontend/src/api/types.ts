@@ -50,6 +50,7 @@ export type Appointment = {
   procedures: AppointmentProcedure[]
   client_name: string
   client_phone: string
+  client_email?: string | null
   start_time: string
   end_time: string
   total_duration_minutes: number

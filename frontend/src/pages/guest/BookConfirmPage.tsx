@@ -10,7 +10,7 @@ import type { Appointment } from '../../api/types'
 import { useT } from '../../state/useT'
 import { saveLastBooking } from '../../state/booking'
 
-type FormValues = { client_name: string; client_phone: string }
+type FormValues = { client_name: string; client_phone: string; client_email: string }
 
 export function BookConfirmPage() {
   const t = useT()
@@ -27,7 +27,7 @@ export function BookConfirmPage() {
     register,
     handleSubmit,
     formState: { isSubmitting, errors },
-  } = useForm<FormValues>({ defaultValues: { client_name: '', client_phone: '' } })
+  } = useForm<FormValues>({ defaultValues: { client_name: '', client_phone: '', client_email: '' } })
 
   return (
     <Page title={t('guest.confirm.title')} subtitle={t('guest.confirm.subtitle')}>
@@ -50,6 +50,7 @@ export function BookConfirmPage() {
                   procedure_ids: procedureIds.split(',').map((id) => Number(id)),
                   client_name: v.client_name,
                   client_phone: v.client_phone,
+                  client_email: v.client_email.trim() === '' ? null : v.client_email.trim(),
                   start_time: startTime,
                 }),
               })
@@ -73,6 +74,21 @@ export function BookConfirmPage() {
             <Input {...register('client_phone', { required: true })} />
             {errors.client_phone ? (
               <div className="mt-1 text-xs text-rose-600">{t('guest.confirm.phoneRequired')}</div>
+            ) : null}
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-rose-900/80">
+              {t('common.email')} <span className="font-normal opacity-60">({t('common.optional')})</span>
+            </label>
+            <Input
+              type="email"
+              {...register('client_email', {
+                validate: (val) =>
+                  val === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) || t('guest.confirm.emailInvalid'),
+              })}
+            />
+            {errors.client_email ? (
+              <div className="mt-1 text-xs text-rose-600">{String(errors.client_email.message)}</div>
             ) : null}
           </div>
 
