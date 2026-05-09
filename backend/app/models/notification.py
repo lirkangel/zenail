@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, JSON, String, Text
@@ -70,19 +70,19 @@ class Notification(SQLModel, table=True):
         ),
     )
 
-    scheduled_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False, index=True))
+    scheduled_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
     sent_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
 
     attempt_count: int = Field(default=0, sa_column=Column(Integer, nullable=False))
     last_error: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
     created_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(
-            DateTime(timezone=True), nullable=False, onupdate=datetime.utcnow
+            DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(timezone.utc)
         ),
     )
