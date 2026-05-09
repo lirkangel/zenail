@@ -6,6 +6,7 @@ import type { Procedure } from '../../api/types'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { Page } from '../../components/Page'
+import { getGuestBookingDraft } from '../../state/booking'
 import { useT } from '../../state/useT'
 
 export function BookProcedurePage() {
@@ -31,6 +32,19 @@ export function BookProcedurePage() {
   )
   const totalPrice = selected.reduce((sum, p) => sum + Number(p.price), 0)
   const totalDuration = selected.reduce((sum, p) => sum + p.duration_minutes, 0)
+  const selectedProceduresParam = selectedIds.join(',')
+  const rememberedDay = useMemo(() => {
+    const draft = getGuestBookingDraft()
+    if (!draft || !branchId || !masterId) return null
+    if (
+      draft.branch_id !== branchId ||
+      draft.master_id !== masterId ||
+      draft.procedures !== selectedProceduresParam
+    ) {
+      return null
+    }
+    return draft.day
+  }, [branchId, masterId, selectedProceduresParam])
 
   const toggleProcedure = (procedureId: number) => {
     const nextIds = selectedIds.includes(procedureId)
@@ -108,7 +122,7 @@ export function BookProcedurePage() {
           </div>
           <Link
             className={selected.length ? '' : 'pointer-events-none'}
-            to={`/book/time?branch=${branchId}&master=${masterId}&procedures=${selectedIds.join(',')}`}
+            to={`/book/time?branch=${branchId}&master=${masterId}&procedures=${selectedProceduresParam}${rememberedDay ? `&day=${encodeURIComponent(rememberedDay)}` : ''}`}
           >
             <Button className="w-full" disabled={!selected.length} type="button">
               {t('guest.procedure.chooseTime')}

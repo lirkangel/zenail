@@ -6,6 +6,7 @@ import { apiFetch } from '../../api/client'
 import type { Availability } from '../../api/types'
 import { Card } from '../../components/Card'
 import { Page } from '../../components/Page'
+import { getGuestBookingDraft, saveGuestBookingDraft } from '../../state/booking'
 import { useT } from '../../state/useT'
 
 export function BookTimePage() {
@@ -13,13 +14,22 @@ export function BookTimePage() {
   const [sp, setSp] = useSearchParams()
   const branchId = sp.get('branch')
   const masterId = sp.get('master')
-  const procedureIds = sp.get('procedures') ?? sp.get('procedure')
+  const procedureIds = sp.get('procedures') ?? sp.get('procedure') ?? ''
   const dayParam = sp.get('day')
+  const rememberedDraft = getGuestBookingDraft()
 
   const today = startOfDay(new Date())
   const [day, setDay] = useState(() => {
-    if (!dayParam) return today
-    const parsed = startOfDay(new Date(`${dayParam}T00:00:00`))
+    const initialDay =
+      dayParam ||
+      (rememberedDraft &&
+      rememberedDraft.branch_id === branchId &&
+      rememberedDraft.master_id === masterId &&
+      rememberedDraft.procedures === procedureIds
+        ? rememberedDraft.day
+        : null)
+    if (!initialDay) return today
+    const parsed = startOfDay(new Date(`${initialDay}T00:00:00`))
     return Number.isNaN(parsed.getTime()) ? today : parsed
   })
   const dayStr = useMemo(() => format(day, 'yyyy-MM-dd'), [day])
@@ -30,6 +40,14 @@ export function BookTimePage() {
     const next = new URLSearchParams(sp)
     next.set('day', format(nextDay, 'yyyy-MM-dd'))
     setSp(next, { replace: true })
+    if (branchId && masterId && procedureIds) {
+      saveGuestBookingDraft({
+        branch_id: branchId,
+        master_id: masterId,
+        procedures: procedureIds,
+        day: format(nextDay, 'yyyy-MM-dd'),
+      })
+    }
   }
 
   const q = useQuery({
