@@ -15,16 +15,16 @@ depends_on = None
 
 
 notification_kind = sa.Enum(
-    "reminder_24h", "canceled", "rescheduled", name="notification_kind"
+    "reminder_24h", "canceled", "rescheduled", name="notification_kind", create_type=False
 )
 notification_recipient_role = sa.Enum(
-    "guest", "master", "manager", name="notification_recipient_role"
+    "guest", "master", "manager", name="notification_recipient_role", create_type=False
 )
 notification_channel = sa.Enum(
-    "email", "sms", "zalo_zns", name="notification_channel"
+    "email", "sms", "zalo_zns", name="notification_channel", create_type=False
 )
 notification_status = sa.Enum(
-    "pending", "sent", "failed", "skipped", name="notification_status"
+    "pending", "sent", "failed", "skipped", name="notification_status", create_type=False
 )
 
 
