@@ -25,6 +25,10 @@ class Appointment(SQLModel, table=True):
 
     client_name: str = Field(sa_column=Column(String(200), nullable=False))
     client_phone: str = Field(sa_column=Column(String(50), nullable=False))
+    client_email: str | None = Field(
+        default=None,
+        sa_column=Column(String(200), nullable=True),
+    )
     booking_reference: str = Field(
         default_factory=generate_booking_reference,
         sa_column=Column(String(32), nullable=False, unique=True, index=True),

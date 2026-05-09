@@ -6,6 +6,13 @@ from app.models.master_procedure import MasterProcedure
 from app.models.procedure import Procedure
 from app.models.reschedule_request import RescheduleRequest
 from app.models.staff import Staff
+from app.models.notification import (  # noqa: F401
+    Notification,
+    NotificationKind,
+    NotificationRecipientRole,
+    NotificationChannel,
+    NotificationStatus,
+)
 
 __all__ = [
     "Appointment",
@@ -13,6 +20,11 @@ __all__ = [
     "Branch",
     "BranchNonWorkingDay",
     "MasterProcedure",
+    "Notification",
+    "NotificationChannel",
+    "NotificationKind",
+    "NotificationRecipientRole",
+    "NotificationStatus",
     "Procedure",
     "RescheduleRequest",
     "Staff",
