@@ -26,6 +26,7 @@ from app.schemas.manager import (
     RevenueOut,
 )
 from app.schemas.public import AppointmentOut
+from app.services import appointment_service
 from app.services.appointment_out import appointment_to_out
 from app.services.booking import (
     appointment_duration_minutes,
@@ -84,9 +85,9 @@ def update_appointment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
 
     if payload.status is not None:
-        if payload.status == AppointmentStatus.canceled:
-            appt.status = AppointmentStatus.canceled
-        else:
+        if payload.status == AppointmentStatus.canceled and appt.status != AppointmentStatus.canceled:
+            appointment_service.cancel(appt, db)
+        elif payload.status != AppointmentStatus.canceled:
             appt.status = payload.status
 
     target_master_id = payload.master_id if payload.master_id is not None else appt.master_id
@@ -131,8 +132,13 @@ def update_appointment(
         )
 
         appt.master_id = target_master_id
-        appt.start_time = target_start_utc
-        appt.end_time = target_end_utc
+        if payload.start_time is not None:
+            appointment_service.reschedule(
+                appt, new_start=target_start_utc, new_end=target_end_utc, session=db
+            )
+        else:
+            appt.start_time = target_start_utc
+            appt.end_time = target_end_utc
 
     db.commit()
     db.refresh(appt)
@@ -238,8 +244,7 @@ def decide_reschedule_request(
             exclude_appointment_id=appt.id,
         )
 
-        appt.start_time = new_start
-        appt.end_time = new_end
+        appointment_service.reschedule(appt, new_start=new_start, new_end=new_end, session=db)
 
     req.status = payload.status
     req.decided_by_manager_id = staff.id
