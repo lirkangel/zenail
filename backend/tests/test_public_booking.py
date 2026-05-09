@@ -356,6 +356,113 @@ def test_manager_can_see_and_reassign_appointment_master(client, db_session):
     assert data["master_name"] == "M2"
 
 
+def test_admin_cancel_ignores_conflicting_start_time_payload(client, db_session):
+    branch, master, proc = seed_min(db_session)
+    admin = Staff(
+        full_name="Admin",
+        email="admin-cancel@example.com",
+        role=StaffRole.admin,
+        branch_id=None,
+        password_hash=hash_password("admin123"),
+        is_active=True,
+    )
+    db_session.add(admin)
+    db_session.flush()
+
+    appt = Appointment(
+        branch_id=branch.id,
+        master_id=master.id,
+        procedure_id=proc.id,
+        client_name="A",
+        client_phone="1",
+        start_time=datetime(2030, 1, 1, 10, 0, tzinfo=timezone.utc),
+        end_time=datetime(2030, 1, 1, 11, 0, tzinfo=timezone.utc),
+        price=Decimal("10.00"),
+        status=AppointmentStatus.scheduled,
+    )
+    conflicting = Appointment(
+        branch_id=branch.id,
+        master_id=master.id,
+        procedure_id=proc.id,
+        client_name="B",
+        client_phone="2",
+        start_time=datetime(2030, 1, 1, 12, 0, tzinfo=timezone.utc),
+        end_time=datetime(2030, 1, 1, 13, 0, tzinfo=timezone.utc),
+        price=Decimal("10.00"),
+        status=AppointmentStatus.scheduled,
+    )
+    db_session.add_all([appt, conflicting])
+    db_session.commit()
+
+    token = client.post("/api/auth/login", json={"email": admin.email, "password": "admin123"}).json()[
+        "access_token"
+    ]
+    response = client.patch(
+        f"/api/admin/appointments/{appt.id}",
+        json={"status": "canceled", "start_time": conflicting.start_time.isoformat()},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    response.raise_for_status()
+    assert response.json()["status"] == "canceled"
+
+    updated = db_session.get(Appointment, appt.id)
+    assert updated is not None
+    assert updated.status == AppointmentStatus.canceled
+
+
+def test_manager_cancel_ignores_conflicting_master_reassign_payload(client, db_session):
+    branch, master, proc = seed_min(db_session)
+    foreign_branch = Branch(name="B2", timezone="Asia/Ho_Chi_Minh", open_time=time(9, 0), close_time=time(20, 0))
+    db_session.add(foreign_branch)
+    db_session.flush()
+
+    manager = Staff(
+        full_name="Mgr",
+        email="mgr-cancel@example.com",
+        role=StaffRole.manager,
+        branch_id=branch.id,
+        password_hash=hash_password("manager123"),
+        is_active=True,
+    )
+    foreign_master = Staff(
+        full_name="Foreign Master",
+        email="foreign-master@example.com",
+        role=StaffRole.master,
+        branch_id=foreign_branch.id,
+        password_hash=hash_password("x"),
+        is_active=True,
+    )
+    appt = Appointment(
+        branch_id=branch.id,
+        master_id=master.id,
+        procedure_id=proc.id,
+        client_name="A",
+        client_phone="1",
+        start_time=datetime(2030, 1, 1, 10, 0, tzinfo=timezone.utc),
+        end_time=datetime(2030, 1, 1, 11, 0, tzinfo=timezone.utc),
+        price=Decimal("10.00"),
+        status=AppointmentStatus.scheduled,
+    )
+    db_session.add_all([manager, foreign_master, appt])
+    db_session.commit()
+
+    token = client.post("/api/auth/login", json={"email": manager.email, "password": "manager123"}).json()[
+        "access_token"
+    ]
+    response = client.patch(
+        f"/api/manager/appointments/{appt.id}",
+        json={"status": "canceled", "master_id": foreign_master.id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    response.raise_for_status()
+    assert response.json()["status"] == "canceled"
+
+    updated = db_session.get(Appointment, appt.id)
+    assert updated is not None
+    assert updated.status == AppointmentStatus.canceled
+    assert updated.master_id == master.id
+
+
 def test_manager_cannot_reassign_master_across_branches(client, db_session):
     branch, _, _ = seed_min(db_session)
     other_branch = Branch(name="B2", timezone="Asia/Ho_Chi_Minh", open_time=time(9, 0), close_time=time(20, 0))

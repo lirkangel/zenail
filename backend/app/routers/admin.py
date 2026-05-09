@@ -97,6 +97,12 @@ def update_appointment(
     if payload.status is not None and not will_cancel:
         appt.status = payload.status
 
+    if will_cancel:
+        appointment_service.cancel(appt, db)
+        db.commit()
+        db.refresh(appt)
+        return appointment_to_out(appt)
+
     new_times = None
     if payload.start_time is not None:
         branch = db.get(Branch, appt.branch_id)
@@ -120,9 +126,6 @@ def update_appointment(
         appointment_service.reschedule(
             appt, new_start=new_times[0], new_end=new_times[1], session=db
         )
-
-    if will_cancel:
-        appointment_service.cancel(appt, db)
 
     db.commit()
     db.refresh(appt)

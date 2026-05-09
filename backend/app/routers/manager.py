@@ -84,11 +84,18 @@ def update_appointment(
     if not appt or appt.branch_id != branch_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
 
+    did_cancel = False
     if payload.status is not None:
         if payload.status == AppointmentStatus.canceled and appt.status != AppointmentStatus.canceled:
             appointment_service.cancel(appt, db)
+            did_cancel = True
         elif payload.status != AppointmentStatus.canceled:
             appt.status = payload.status
+
+    if did_cancel:
+        db.commit()
+        db.refresh(appt)
+        return appointment_to_out(appt)
 
     target_master_id = payload.master_id if payload.master_id is not None else appt.master_id
     target_start = payload.start_time if payload.start_time is not None else appt.start_time

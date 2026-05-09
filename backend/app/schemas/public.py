@@ -1,6 +1,7 @@
 from datetime import datetime, time
 from decimal import Decimal
 
+from pydantic import EmailStr
 from sqlmodel import Field, SQLModel
 
 from app.models.enums import AppointmentStatus
@@ -49,7 +50,7 @@ class AppointmentCreate(SQLModel):
     procedure_ids: list[int] = Field(default_factory=list)
     client_name: str
     client_phone: str
-    client_email: str | None = None
+    client_email: EmailStr | None = None
     start_time: datetime
 
 
