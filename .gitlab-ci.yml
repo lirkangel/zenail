@@ -1,0 +1,18 @@
+stages:
+  - deploy
+
+default:
+  tags:
+    - homelab
+
+variables:
+  REGISTRY: "10.0.0.7:30500"
+
+deploy:
+  stage: deploy
+  script:
+    - cp -a . /opt/zenail/
+    - rm -rf /opt/zenail/.git /opt/zenail/node_modules /opt/zenail/frontend/node_modules
+    - bash /opt/zenail/scripts/k8s-deploy.sh
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
