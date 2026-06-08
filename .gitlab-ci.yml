@@ -40,7 +40,8 @@ deploy:
       EOF
     - kubectl --kubeconfig ${KUBECONFIG_PATH} wait --for=condition=complete job/zenail-migrate -n zenail --timeout=120s
     - kubectl --kubeconfig ${KUBECONFIG_PATH} logs job/zenail-migrate -n zenail
-    - kubectl --kubeconfig ${KUBECONFIG_PATH} rollout restart deployment/backend deployment/frontend -n zenail
+    - kubectl --kubeconfig ${KUBECONFIG_PATH} set image deployment/backend backend=${REGISTRY}/zenail-backend:latest -n zenail
+    - kubectl --kubeconfig ${KUBECONFIG_PATH} set image deployment/frontend frontend=${REGISTRY}/zenail-frontend:latest -n zenail
     - kubectl --kubeconfig ${KUBECONFIG_PATH} rollout status deployment/backend -n zenail --timeout=120s
     - kubectl --kubeconfig ${KUBECONFIG_PATH} rollout status deployment/frontend -n zenail --timeout=120s
   rules:
