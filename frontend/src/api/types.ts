@@ -44,6 +44,7 @@ export type Appointment = {
   booking_reference: string
   branch_id: number
   master_id: number
+  customer_id?: number | null
   master_name?: string | null
   procedure_id: number
   procedure_ids: number[]
@@ -72,4 +73,39 @@ export type Me = {
   phone?: string | null
   role: StaffRole
   branch_id: number | null
+}
+
+export type CustomerSummary = {
+  id: number
+  full_name: string
+  phone: string
+  email?: string | null
+  notes?: string | null
+  visit_count: number
+  completed_spend: string
+  latest_visit?: string | null
+  upcoming_appointment?: string | null
+}
+
+export type CustomerList = {
+  items: CustomerSummary[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export type CustomerAppointment = {
+  id: number
+  branch_id: number
+  master_id: number
+  master_name?: string | null
+  start_time: string
+  end_time: string
+  price: string
+  status: 'scheduled' | 'completed' | 'canceled'
+  procedures: string[]
+}
+
+export type CustomerDetail = CustomerSummary & {
+  appointments: CustomerAppointment[]
 }

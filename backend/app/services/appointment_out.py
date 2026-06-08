@@ -31,6 +31,7 @@ def appointment_to_out(appt: Appointment) -> AppointmentOut:
         booking_reference=appt.booking_reference,
         branch_id=appt.branch_id,
         master_id=appt.master_id,
+        customer_id=appt.customer_id,
         master_name=appt.master.full_name if appt.master else None,
         procedure_id=appt.procedure_id,
         procedure_ids=[p.id for p in procedures],

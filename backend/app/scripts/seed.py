@@ -14,6 +14,7 @@ from app.models.enums import AppointmentStatus, StaffRole
 from app.models.master_procedure import MasterProcedure
 from app.models.procedure import Procedure
 from app.models.staff import Staff
+from app.services.customers import resolve_customer_for_booking
 
 
 def _pseudo_master_name(seed: int) -> str:
@@ -280,12 +281,20 @@ def run() -> None:
             )
             if exists:
                 return
+            customer = resolve_customer_for_booking(
+                db,
+                full_name=f"Client {i}",
+                phone=f"+100000000{i}",
+                email=f"client{i}@example.com",
+            )
             appt = Appointment(
                 branch_id=branch_id,
                 master_id=master_id,
                 procedure_id=procedure.id,
+                customer_id=customer.id,
                 client_name=f"Client {i}",
                 client_phone=f"+100000000{i}",
+                client_email=f"client{i}@example.com",
                 start_time=start,
                 end_time=end,
                 price=procedure.price,

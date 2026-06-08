@@ -32,6 +32,7 @@ from app.services.booking import (
     get_branch_timezone,
     iter_branch_slots,
 )
+from app.services.customers import resolve_customer_for_booking
 from app.core.config import settings
 
 router = APIRouter(tags=["public"])
@@ -247,11 +248,18 @@ def create_appointment(payload: AppointmentCreate, db: Session = Depends(get_db)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Branch is closed on this day")
 
     ensure_no_conflict(db, master_id=payload.master_id, start_utc=start, end_utc=end)
+    customer = resolve_customer_for_booking(
+        db,
+        full_name=payload.client_name,
+        phone=payload.client_phone,
+        email=str(payload.client_email) if payload.client_email else None,
+    )
 
     appt = Appointment(
         branch_id=payload.branch_id,
         master_id=payload.master_id,
         procedure_id=selected_ids[0],
+        customer_id=customer.id,
         client_name=payload.client_name,
         client_phone=payload.client_phone,
         client_email=payload.client_email,

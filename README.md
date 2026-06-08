@@ -25,6 +25,8 @@ Zenail là hệ thống CRM và đặt lịch cho tiệm nail nhiều chi nhánh
 - Quản lý nhiều chi nhánh
 - Hỗ trợ nhiều dịch vụ trong một lịch hẹn
 - Lookup lịch hẹn bằng `booking_reference` thay vì `appointment_id + phone`
+- Hồ sơ khách hàng với lịch sử đặt lịch, ghi chú, số lượt hẹn, doanh thu hoàn thành
+- Public booking tự tạo / tái sử dụng hồ sơ khách theo số điện thoại
 - Hỗ trợ múi giờ theo từng chi nhánh
 - Kiểm tra xung đột lịch tập trung trong backend
 - Đăng nhập JWT cho nhân viên

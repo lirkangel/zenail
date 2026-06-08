@@ -11,6 +11,7 @@ from app.db.sqlmodel import get_db
 from app.models.appointment import Appointment
 from app.models.branch import Branch
 from app.models.branch_non_working_day import BranchNonWorkingDay
+from app.models.customer import Customer
 from app.models.enums import AppointmentStatus, RescheduleRequestStatus, StaffRole
 from app.models.master_procedure import MasterProcedure
 from app.models.procedure import Procedure
@@ -35,6 +36,7 @@ from app.schemas.admin import (
     StaffCreate,
     StaffUpdate,
 )
+from app.schemas.customer import CustomerDetailOut, CustomerListOut, CustomerUpdate
 from app.schemas.public import AppointmentOut
 from app.services import appointment_service
 from app.services.appointment_out import appointment_to_out
@@ -45,6 +47,7 @@ from app.services.booking import (
     ensure_no_conflict,
     validate_branch_timezone,
 )
+from app.services.customers import customer_detail_out, customer_list_out
 
 router = APIRouter(tags=["admin"])
 
@@ -295,6 +298,46 @@ def revenue(
     by_branch = [RevenueBreakdownRow(branch_id=r[0], total=Decimal(r[1])) for r in rows]
     total = sum((r.total for r in by_branch), Decimal("0"))
     return RevenueBreakdownOut(from_date=from_date, to_date=to_date, total=total, by_branch=by_branch)
+
+
+@router.get("/admin/customers", response_model=CustomerListOut)
+def customers(
+    q: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> CustomerListOut:
+    return customer_list_out(db, query=q, limit=limit, offset=offset)
+
+
+@router.get("/admin/customers/{customer_id}", response_model=CustomerDetailOut)
+def customer_detail(
+    customer_id: int,
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> CustomerDetailOut:
+    customer = db.get(Customer, customer_id)
+    if not customer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    return customer_detail_out(db, customer=customer)
+
+
+@router.patch("/admin/customers/{customer_id}", response_model=CustomerDetailOut)
+def update_customer(
+    customer_id: int,
+    payload: CustomerUpdate,
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> CustomerDetailOut:
+    customer = db.get(Customer, customer_id)
+    if not customer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+    customer.notes = payload.notes
+    db.add(customer)
+    db.commit()
+    db.refresh(customer)
+    return customer_detail_out(db, customer=customer)
 
 
 @router.get("/admin/branches", response_model=list[BranchAdminOut])

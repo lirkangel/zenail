@@ -22,6 +22,10 @@ class Appointment(SQLModel, table=True):
     branch_id: int = Field(sa_column=Column(Integer, ForeignKey("branches.id", ondelete="RESTRICT"), index=True))
     master_id: int = Field(sa_column=Column(Integer, ForeignKey("staff.id", ondelete="RESTRICT"), index=True))
     procedure_id: int = Field(sa_column=Column(Integer, ForeignKey("procedures.id", ondelete="RESTRICT")))
+    customer_id: int | None = Field(
+        default=None,
+        sa_column=Column(Integer, ForeignKey("customers.id", ondelete="RESTRICT"), index=True),
+    )
 
     client_name: str = Field(sa_column=Column(String(200), nullable=False))
     client_phone: str = Field(sa_column=Column(String(50), nullable=False))
@@ -55,6 +59,7 @@ class Appointment(SQLModel, table=True):
     branch: Optional["Branch"] = Relationship()
     master: Optional["Staff"] = Relationship(sa_relationship_kwargs={"foreign_keys": "[Appointment.master_id]"})
     procedure: Optional["Procedure"] = Relationship()
+    customer: Optional["Customer"] = Relationship()
     procedures: List["AppointmentProcedure"] = Relationship(
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "AppointmentProcedure.sort_order"}
     )

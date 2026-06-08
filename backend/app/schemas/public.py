@@ -66,6 +66,7 @@ class AppointmentOut(SQLModel):
     booking_reference: str
     branch_id: int
     master_id: int
+    customer_id: int | None = None
     master_name: str | None = None
     procedure_id: int
     procedure_ids: list[int]
