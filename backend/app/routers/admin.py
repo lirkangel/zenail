@@ -11,7 +11,7 @@ from app.db.sqlmodel import get_db
 from app.models.appointment import Appointment
 from app.models.branch import Branch
 from app.models.branch_non_working_day import BranchNonWorkingDay
-from app.models.customer import Customer
+from app.models.customer import Customer, CustomerPreferenceDefinition, CustomerTagDefinition
 from app.models.enums import AppointmentStatus, RescheduleRequestStatus, StaffRole
 from app.models.master_procedure import MasterProcedure
 from app.models.procedure import Procedure
@@ -36,7 +36,17 @@ from app.schemas.admin import (
     StaffCreate,
     StaffUpdate,
 )
-from app.schemas.customer import CustomerDetailOut, CustomerListOut, CustomerUpdate
+from app.schemas.customer import (
+    CustomerDetailOut,
+    CustomerListOut,
+    CustomerPreferenceDefinitionCreate,
+    CustomerPreferenceDefinitionOut,
+    CustomerPreferenceDefinitionUpdate,
+    CustomerTagDefinitionCreate,
+    CustomerTagDefinitionOut,
+    CustomerTagDefinitionUpdate,
+    CustomerUpdate,
+)
 from app.schemas.public import AppointmentOut
 from app.services import appointment_service
 from app.services.appointment_out import appointment_to_out
@@ -51,8 +61,16 @@ from app.services.customers import (
     CustomerUpdatePermissionError,
     active_customer,
     apply_customer_update,
+    create_preference_definition,
+    create_tag_definition,
     customer_detail_out,
     customer_list_out,
+    list_preference_definitions,
+    list_tag_definitions,
+    preference_definition_out,
+    tag_definition_out,
+    update_preference_definition,
+    update_tag_definition,
 )
 
 router = APIRouter(tags=["admin"])
@@ -346,6 +364,7 @@ def update_customer(
             customer=customer,
             payload=payload,
             allow_phone_edit=True,
+            branch_scope=None,
         )
     except CustomerUpdatePermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
@@ -357,6 +376,96 @@ def update_customer(
         merge_happened=result.merge_happened,
         merged_from_customer_id=result.merged_from_customer_id,
     )
+
+
+@router.get("/admin/customer-tag-definitions", response_model=list[CustomerTagDefinitionOut])
+def admin_customer_tag_definitions(
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> list[CustomerTagDefinitionOut]:
+    return [tag_definition_out(row) for row in list_tag_definitions(db, branch_id=None)]
+
+
+@router.post(
+    "/admin/customer-tag-definitions",
+    response_model=CustomerTagDefinitionOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def admin_create_customer_tag_definition(
+    payload: CustomerTagDefinitionCreate,
+    db: Session = Depends(get_db),
+    staff: Staff = Depends(require_admin),
+) -> CustomerTagDefinitionOut:
+    definition = create_tag_definition(actor_id=staff.id, payload=payload, branch_scope=None)
+    db.add(definition)
+    db.commit()
+    db.refresh(definition)
+    return tag_definition_out(definition)
+
+
+@router.patch("/admin/customer-tag-definitions/{definition_id}", response_model=CustomerTagDefinitionOut)
+def admin_update_customer_tag_definition(
+    definition_id: int,
+    payload: CustomerTagDefinitionUpdate,
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> CustomerTagDefinitionOut:
+    definition = db.get(CustomerTagDefinition, definition_id)
+    if not definition:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer tag definition not found")
+    update_tag_definition(definition, payload=payload, branch_scope=None)
+    db.add(definition)
+    db.commit()
+    db.refresh(definition)
+    return tag_definition_out(definition)
+
+
+@router.get("/admin/customer-preference-definitions", response_model=list[CustomerPreferenceDefinitionOut])
+def admin_customer_preference_definitions(
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> list[CustomerPreferenceDefinitionOut]:
+    return [preference_definition_out(row) for row in list_preference_definitions(db, branch_id=None)]
+
+
+@router.post(
+    "/admin/customer-preference-definitions",
+    response_model=CustomerPreferenceDefinitionOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def admin_create_customer_preference_definition(
+    payload: CustomerPreferenceDefinitionCreate,
+    db: Session = Depends(get_db),
+    staff: Staff = Depends(require_admin),
+) -> CustomerPreferenceDefinitionOut:
+    definition = create_preference_definition(actor_id=staff.id, payload=payload, branch_scope=None)
+    db.add(definition)
+    db.commit()
+    db.refresh(definition)
+    return preference_definition_out(definition)
+
+
+@router.patch(
+    "/admin/customer-preference-definitions/{definition_id}",
+    response_model=CustomerPreferenceDefinitionOut,
+)
+def admin_update_customer_preference_definition(
+    definition_id: int,
+    payload: CustomerPreferenceDefinitionUpdate,
+    db: Session = Depends(get_db),
+    _: Staff = Depends(require_admin),
+) -> CustomerPreferenceDefinitionOut:
+    definition = db.get(CustomerPreferenceDefinition, definition_id)
+    if not definition:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Customer preference definition not found",
+        )
+    update_preference_definition(definition, payload=payload, branch_scope=None)
+    db.add(definition)
+    db.commit()
+    db.refresh(definition)
+    return preference_definition_out(definition)
 
 
 @router.get("/admin/branches", response_model=list[BranchAdminOut])

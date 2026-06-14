@@ -401,3 +401,146 @@ def test_admin_phone_edit_auto_merges_customer(client, db_session):
     assert db_session.get(CustomerTag, (keeper.id, tag_def.id)) is not None
     assert db_session.get(CustomerPreferenceValue, (keeper.id, pref_def.id)) is not None
     assert len(merge_logs) == 1
+
+
+def test_admin_can_manage_global_tag_definition(client, db_session):
+    admin = _seed_admin(db_session)
+
+    create_res = client.post(
+        "/api/admin/customer-tag-definitions",
+        headers={"Authorization": f"Bearer {_token_for(admin)}"},
+        json={"name": "VIP", "slug": "vip", "scope": "global"},
+    )
+    assert create_res.status_code == 201
+    created = create_res.json()
+    assert created["scope"] == "global"
+    assert created["branch_id"] is None
+
+    patch_res = client.patch(
+        f"/api/admin/customer-tag-definitions/{created['id']}",
+        headers={"Authorization": f"Bearer {_token_for(admin)}"},
+        json={"name": "VIP Gold"},
+    )
+    patch_res.raise_for_status()
+    assert patch_res.json()["name"] == "VIP Gold"
+
+    list_res = client.get(
+        "/api/admin/customer-tag-definitions",
+        headers={"Authorization": f"Bearer {_token_for(admin)}"},
+    )
+    list_res.raise_for_status()
+    assert [row["slug"] for row in list_res.json()] == ["vip"]
+
+
+def test_manager_can_manage_branch_preference_definition_only_for_own_branch(client, db_session):
+    branch, _, _ = _seed_booking_base(db_session)
+    other_branch = Branch(name="Riverside", timezone="UTC", open_time=time(8, 0), close_time=time(20, 0))
+    db_session.add(other_branch)
+    db_session.commit()
+
+    admin = _seed_admin(db_session)
+    manager = _seed_manager(db_session, branch.id)
+
+    create_res = client.post(
+        "/api/manager/customer-preference-definitions",
+        headers={"Authorization": f"Bearer {_token_for(manager)}"},
+        json={"name": "Quiet", "slug": "quiet", "value_type": "boolean"},
+    )
+    assert create_res.status_code == 201
+    created = create_res.json()
+    assert created["scope"] == "branch"
+    assert created["branch_id"] == branch.id
+
+    global_def = CustomerPreferenceDefinition(
+        name="VIP room",
+        slug="vip-room",
+        scope=DefinitionScope.global_,
+        branch_id=None,
+        value_type=PreferenceValueType.boolean,
+        options_json=None,
+        is_active=True,
+        created_by_staff_id=admin.id,
+    )
+    foreign_def = CustomerPreferenceDefinition(
+        name="Window",
+        slug="window",
+        scope=DefinitionScope.branch,
+        branch_id=other_branch.id,
+        value_type=PreferenceValueType.boolean,
+        options_json=None,
+        is_active=True,
+        created_by_staff_id=admin.id,
+    )
+    db_session.add_all([global_def, foreign_def])
+    db_session.commit()
+
+    global_patch = client.patch(
+        f"/api/manager/customer-preference-definitions/{global_def.id}",
+        headers={"Authorization": f"Bearer {_token_for(manager)}"},
+        json={"name": "Changed"},
+    )
+    foreign_patch = client.patch(
+        f"/api/manager/customer-preference-definitions/{foreign_def.id}",
+        headers={"Authorization": f"Bearer {_token_for(manager)}"},
+        json={"name": "Changed"},
+    )
+
+    assert global_patch.status_code == 404
+    assert foreign_patch.status_code == 404
+
+
+def test_admin_customer_update_syncs_tags_and_preferences(client, db_session):
+    branch, master, proc = _seed_booking_base(db_session)
+    admin = _seed_admin(db_session)
+    customer = Customer(full_name="An", phone="0903", phone_normalized="0903", email="an@example.com")
+    db_session.add(customer)
+    db_session.flush()
+    db_session.add(
+        Appointment(
+            branch_id=branch.id,
+            master_id=master.id,
+            procedure_id=proc.id,
+            customer_id=customer.id,
+            client_name="An",
+            client_phone="0903",
+            client_email="an@example.com",
+            start_time=datetime(2030, 1, 4, 10, 0, tzinfo=timezone.utc),
+            end_time=datetime(2030, 1, 4, 11, 0, tzinfo=timezone.utc),
+            price=Decimal("90.00"),
+        )
+    )
+    tag_def = CustomerTagDefinition(
+        name="VIP",
+        slug="vip",
+        scope=DefinitionScope.global_,
+        branch_id=None,
+        is_active=True,
+        created_by_staff_id=admin.id,
+    )
+    pref_def = CustomerPreferenceDefinition(
+        name="Quiet",
+        slug="quiet",
+        scope=DefinitionScope.branch,
+        branch_id=branch.id,
+        value_type=PreferenceValueType.boolean,
+        options_json=None,
+        is_active=True,
+        created_by_staff_id=admin.id,
+    )
+    db_session.add_all([tag_def, pref_def])
+    db_session.commit()
+
+    patch_res = client.patch(
+        f"/api/admin/customers/{customer.id}",
+        headers={"Authorization": f"Bearer {_token_for(admin)}"},
+        json={
+            "tag_ids": [tag_def.id],
+            "preferences": [{"definition_id": pref_def.id, "value_bool": True}],
+        },
+    )
+
+    assert patch_res.status_code == 200
+    body = patch_res.json()
+    assert [tag["slug"] for tag in body["tags"]] == ["vip"]
+    assert body["preferences"][0]["slug"] == "quiet"
+    assert body["preferences"][0]["value_bool"] is True
