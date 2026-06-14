@@ -4,7 +4,20 @@ from decimal import Decimal
 from sqlmodel import Session, select
 
 from app.core.security import create_access_token, hash_password
-from app.models import Appointment, Branch, Customer, MasterProcedure, Procedure, Staff
+from app.models import (
+    Appointment,
+    Branch,
+    Customer,
+    CustomerPreferenceDefinition,
+    CustomerPreferenceValue,
+    CustomerTag,
+    CustomerTagDefinition,
+    DefinitionScope,
+    MasterProcedure,
+    PreferenceValueType,
+    Procedure,
+    Staff,
+)
 from app.models.enums import AppointmentStatus, StaffRole
 
 
@@ -203,3 +216,58 @@ def test_manager_customer_scope_and_notes_update(client, db_session):
     patch_res.raise_for_status()
     db_session.refresh(visible)
     assert visible.notes == "Prefers quiet morning slots"
+
+
+def test_customer_crm_models_support_tag_and_preference_assignments(db_session: Session) -> None:
+    branch, _, _ = _seed_booking_base(db_session)
+
+    customer = Customer(full_name="Lan", phone="0901", phone_normalized="0901")
+    tag_def = CustomerTagDefinition(
+        name="VIP",
+        slug="vip",
+        scope=DefinitionScope.global_,
+        branch_id=None,
+        is_active=True,
+        created_by_staff_id=1,
+    )
+    pref_def = CustomerPreferenceDefinition(
+        name="Quiet",
+        slug="quiet",
+        scope=DefinitionScope.branch,
+        branch_id=branch.id,
+        value_type=PreferenceValueType.boolean,
+        options_json=None,
+        is_active=True,
+        created_by_staff_id=1,
+    )
+    db_session.add_all([customer, tag_def, pref_def])
+    db_session.commit()
+
+    db_session.add(
+        CustomerTag(
+            customer_id=customer.id,
+            tag_definition_id=tag_def.id,
+            assigned_by_staff_id=1,
+        )
+    )
+    db_session.add(
+        CustomerPreferenceValue(
+            customer_id=customer.id,
+            preference_definition_id=pref_def.id,
+            value_bool=True,
+            updated_by_staff_id=1,
+        )
+    )
+    db_session.commit()
+
+    saved_customer = db_session.get(Customer, customer.id)
+    assert saved_customer is not None
+    assert saved_customer.is_active is True
+    assert saved_customer.merged_into_customer_id is None
+
+    saved_tag = db_session.get(CustomerTag, (customer.id, tag_def.id))
+    saved_preference = db_session.get(CustomerPreferenceValue, (customer.id, pref_def.id))
+
+    assert saved_tag is not None
+    assert saved_preference is not None
+    assert saved_preference.value_bool is True
