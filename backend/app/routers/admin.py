@@ -47,7 +47,13 @@ from app.services.booking import (
     ensure_no_conflict,
     validate_branch_timezone,
 )
-from app.services.customers import customer_detail_out, customer_list_out
+from app.services.customers import (
+    CustomerUpdatePermissionError,
+    active_customer,
+    apply_customer_update,
+    customer_detail_out,
+    customer_list_out,
+)
 
 router = APIRouter(tags=["admin"])
 
@@ -317,7 +323,7 @@ def customer_detail(
     db: Session = Depends(get_db),
     _: Staff = Depends(require_admin),
 ) -> CustomerDetailOut:
-    customer = db.get(Customer, customer_id)
+    customer = active_customer(db, customer_id=customer_id)
     if not customer:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
     return customer_detail_out(db, customer=customer)
@@ -328,16 +334,29 @@ def update_customer(
     customer_id: int,
     payload: CustomerUpdate,
     db: Session = Depends(get_db),
-    _: Staff = Depends(require_admin),
+    staff: Staff = Depends(require_admin),
 ) -> CustomerDetailOut:
-    customer = db.get(Customer, customer_id)
+    customer = active_customer(db, customer_id=customer_id)
     if not customer:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
-    customer.notes = payload.notes
-    db.add(customer)
+    try:
+        result = apply_customer_update(
+            db,
+            actor_id=staff.id,
+            customer=customer,
+            payload=payload,
+            allow_phone_edit=True,
+        )
+    except CustomerUpdatePermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     db.commit()
-    db.refresh(customer)
-    return customer_detail_out(db, customer=customer)
+    db.refresh(result.customer)
+    return customer_detail_out(
+        db,
+        customer=result.customer,
+        merge_happened=result.merge_happened,
+        merged_from_customer_id=result.merged_from_customer_id,
+    )
 
 
 @router.get("/admin/branches", response_model=list[BranchAdminOut])

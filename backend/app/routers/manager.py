@@ -38,7 +38,14 @@ from app.services.booking import (
     ensure_no_conflict,
     now_in_branch,
 )
-from app.services.customers import customer_detail_out, customer_is_visible, customer_list_out
+from app.services.customers import (
+    CustomerUpdatePermissionError,
+    active_customer,
+    apply_customer_update,
+    customer_detail_out,
+    customer_is_visible,
+    customer_list_out,
+)
 
 router = APIRouter(tags=["manager"])
 
@@ -328,7 +335,7 @@ def customer_detail(
     staff: Staff = Depends(require_manager),
 ) -> CustomerDetailOut:
     branch_id = _require_branch(staff)
-    customer = db.get(Customer, customer_id)
+    customer = active_customer(db, customer_id=customer_id)
     if not customer or not customer_is_visible(db, customer_id=customer_id, branch_id=branch_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
     return customer_detail_out(db, customer=customer, branch_id=branch_id)
@@ -342,11 +349,25 @@ def update_customer(
     staff: Staff = Depends(require_manager),
 ) -> CustomerDetailOut:
     branch_id = _require_branch(staff)
-    customer = db.get(Customer, customer_id)
+    customer = active_customer(db, customer_id=customer_id)
     if not customer or not customer_is_visible(db, customer_id=customer_id, branch_id=branch_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
-    customer.notes = payload.notes
-    db.add(customer)
+    try:
+        result = apply_customer_update(
+            db,
+            actor_id=staff.id,
+            customer=customer,
+            payload=payload,
+            allow_phone_edit=False,
+        )
+    except CustomerUpdatePermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
     db.commit()
-    db.refresh(customer)
-    return customer_detail_out(db, customer=customer, branch_id=branch_id)
+    db.refresh(result.customer)
+    return customer_detail_out(
+        db,
+        customer=result.customer,
+        branch_id=branch_id,
+        merge_happened=result.merge_happened,
+        merged_from_customer_id=result.merged_from_customer_id,
+    )

@@ -7,6 +7,9 @@ from app.models.enums import AppointmentStatus
 
 
 class CustomerUpdate(SQLModel):
+    full_name: str | None = None
+    phone: str | None = None
+    email: str | None = None
     notes: str | None = None
 
 
@@ -42,4 +45,6 @@ class CustomerAppointmentOut(SQLModel):
 
 
 class CustomerDetailOut(CustomerListItemOut):
+    merge_happened: bool = False
+    merged_from_customer_id: int | None = None
     appointments: list[CustomerAppointmentOut]

@@ -8,6 +8,7 @@ from app.models import (
     Appointment,
     Branch,
     Customer,
+    CustomerMergeLog,
     CustomerPreferenceDefinition,
     CustomerPreferenceValue,
     CustomerTag,
@@ -271,3 +272,132 @@ def test_customer_crm_models_support_tag_and_preference_assignments(db_session: 
     assert saved_tag is not None
     assert saved_preference is not None
     assert saved_preference.value_bool is True
+
+
+def test_manager_cannot_edit_customer_phone(client, db_session):
+    branch, master, proc = _seed_booking_base(db_session)
+    customer = Customer(full_name="Visible", phone="0901", phone_normalized="0901")
+    db_session.add(customer)
+    db_session.flush()
+    db_session.add(
+        Appointment(
+            branch_id=branch.id,
+            master_id=master.id,
+            procedure_id=proc.id,
+            customer_id=customer.id,
+            client_name="Visible",
+            client_phone="0901",
+            start_time=datetime(2030, 1, 1, 10, 0, tzinfo=timezone.utc),
+            end_time=datetime(2030, 1, 1, 11, 0, tzinfo=timezone.utc),
+            price=Decimal("100.00"),
+        )
+    )
+    manager = _seed_manager(db_session, branch.id)
+
+    res = client.patch(
+        f"/api/manager/customers/{customer.id}",
+        headers={"Authorization": f"Bearer {_token_for(manager)}"},
+        json={"phone": "0909999999"},
+    )
+
+    assert res.status_code == 403
+
+
+def test_admin_phone_edit_auto_merges_customer(client, db_session):
+    branch, master, proc = _seed_booking_base(db_session)
+    admin = _seed_admin(db_session)
+
+    keeper = Customer(
+        full_name="Lan",
+        phone="0901",
+        phone_normalized="0901",
+        email="lan@example.com",
+        notes="Existing VIP",
+    )
+    source = Customer(
+        full_name="Minh",
+        phone="0902",
+        phone_normalized="0902",
+        email="minh@example.com",
+        notes="Likes quiet",
+    )
+    db_session.add_all([keeper, source])
+    db_session.flush()
+
+    tag_def = CustomerTagDefinition(
+        name="VIP",
+        slug="vip",
+        scope=DefinitionScope.global_,
+        branch_id=None,
+        is_active=True,
+        created_by_staff_id=admin.id,
+    )
+    pref_def = CustomerPreferenceDefinition(
+        name="Quiet",
+        slug="quiet",
+        scope=DefinitionScope.branch,
+        branch_id=branch.id,
+        value_type=PreferenceValueType.boolean,
+        options_json=None,
+        is_active=True,
+        created_by_staff_id=admin.id,
+    )
+    db_session.add_all([tag_def, pref_def])
+    db_session.flush()
+
+    db_session.add(
+        Appointment(
+            branch_id=branch.id,
+            master_id=master.id,
+            procedure_id=proc.id,
+            customer_id=source.id,
+            client_name="Minh",
+            client_phone="0902",
+            client_email="minh@example.com",
+            start_time=datetime(2030, 1, 3, 10, 0, tzinfo=timezone.utc),
+            end_time=datetime(2030, 1, 3, 11, 0, tzinfo=timezone.utc),
+            price=Decimal("120.00"),
+        )
+    )
+    db_session.add(
+        CustomerTag(
+            customer_id=source.id,
+            tag_definition_id=tag_def.id,
+            assigned_by_staff_id=admin.id,
+        )
+    )
+    db_session.add(
+        CustomerPreferenceValue(
+            customer_id=source.id,
+            preference_definition_id=pref_def.id,
+            value_bool=True,
+            updated_by_staff_id=admin.id,
+        )
+    )
+    db_session.commit()
+
+    res = client.patch(
+        f"/api/admin/customers/{source.id}",
+        headers={"Authorization": f"Bearer {_token_for(admin)}"},
+        json={"phone": "0901"},
+    )
+
+    assert res.status_code == 200
+    body = res.json()
+    assert body["id"] == keeper.id
+    assert body["merge_happened"] is True
+    assert body["merged_from_customer_id"] == source.id
+
+    db_session.refresh(keeper)
+    db_session.refresh(source)
+    moved = db_session.exec(select(Appointment).where(Appointment.customer_id == keeper.id)).all()
+    merge_logs = db_session.exec(select(CustomerMergeLog)).all()
+
+    assert source.is_active is False
+    assert source.merged_into_customer_id == keeper.id
+    assert "Existing VIP" in (keeper.notes or "")
+    assert "Likes quiet" in (keeper.notes or "")
+    assert len(moved) == 1
+    assert db_session.get(CustomerTag, (keeper.id, tag_def.id)) is not None
+    assert db_session.get(CustomerPreferenceValue, (keeper.id, pref_def.id)) is not None
+    assert len(merge_logs) == 1

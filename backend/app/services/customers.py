@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -13,11 +14,24 @@ from app.models.enums import AppointmentStatus
 from app.schemas.customer import (
     CustomerAppointmentOut,
     CustomerDetailOut,
+    CustomerUpdate,
     CustomerListItemOut,
     CustomerListOut,
 )
+from app.services.customer_merge import merge_customers
 
 UTC = timezone.utc
+
+
+@dataclass
+class CustomerUpdateResult:
+    customer: Customer
+    merge_happened: bool = False
+    merged_from_customer_id: int | None = None
+
+
+class CustomerUpdatePermissionError(Exception):
+    pass
 
 
 def normalize_phone(phone: str) -> str:
@@ -40,7 +54,12 @@ def resolve_customer_for_booking(
     email: str | None,
 ) -> Customer:
     phone_normalized = normalize_phone(phone)
-    customer = db.scalar(select(Customer).where(Customer.phone_normalized == phone_normalized))
+    customer = db.scalar(
+        select(Customer).where(
+            Customer.phone_normalized == phone_normalized,
+            Customer.is_active.is_(True),
+        )
+    )
     email_normalized = normalize_email(email)
     now = datetime.now(UTC)
 
@@ -65,7 +84,11 @@ def resolve_customer_for_booking(
 
 
 def customer_scope_stmt(*, branch_id: int | None = None, query: str | None = None):
-    stmt = select(Customer).order_by(Customer.updated_at.desc(), Customer.id.desc())
+    stmt = (
+        select(Customer)
+        .where(Customer.is_active.is_(True))
+        .order_by(Customer.updated_at.desc(), Customer.id.desc())
+    )
     if branch_id is not None:
         stmt = stmt.where(
             Customer.id.in_(
@@ -89,6 +112,9 @@ def customer_scope_stmt(*, branch_id: int | None = None, query: str | None = Non
 
 
 def customer_is_visible(db: Session, *, customer_id: int, branch_id: int | None) -> bool:
+    customer = db.get(Customer, customer_id)
+    if not customer or not customer.is_active:
+        return False
     if branch_id is None:
         return True
     count = db.scalar(
@@ -169,11 +195,20 @@ def customer_item_out(db: Session, *, customer: Customer, branch_id: int | None 
     )
 
 
-def customer_detail_out(db: Session, *, customer: Customer, branch_id: int | None = None) -> CustomerDetailOut:
+def customer_detail_out(
+    db: Session,
+    *,
+    customer: Customer,
+    branch_id: int | None = None,
+    merge_happened: bool = False,
+    merged_from_customer_id: int | None = None,
+) -> CustomerDetailOut:
     item = customer_item_out(db, customer=customer, branch_id=branch_id)
     history = customer_history(db, customer_id=customer.id, branch_id=branch_id)
     return CustomerDetailOut(
         **item.model_dump(),
+        merge_happened=merge_happened,
+        merged_from_customer_id=merged_from_customer_id,
         appointments=[
             CustomerAppointmentOut(
                 id=appt.id,
@@ -190,3 +225,71 @@ def customer_detail_out(db: Session, *, customer: Customer, branch_id: int | Non
             for appt in history
         ],
     )
+
+
+def active_customer(db: Session, *, customer_id: int) -> Customer | None:
+    customer = db.get(Customer, customer_id)
+    if not customer or not customer.is_active:
+        return None
+    return customer
+
+
+def apply_customer_update(
+    db: Session,
+    *,
+    actor_id: int,
+    customer: Customer,
+    payload: CustomerUpdate,
+    allow_phone_edit: bool,
+) -> CustomerUpdateResult:
+    fields_set = payload.model_fields_set
+
+    if "phone" in fields_set and not allow_phone_edit:
+        raise CustomerUpdatePermissionError("Managers cannot edit phone")
+
+    result = CustomerUpdateResult(customer=customer)
+
+    if "full_name" in fields_set and payload.full_name is not None:
+        customer.full_name = payload.full_name.strip() or customer.full_name
+    if "email" in fields_set:
+        customer.email = normalize_email(payload.email)
+    if "notes" in fields_set:
+        customer.notes = payload.notes.strip() or None if payload.notes is not None else None
+
+    if "phone" in fields_set and payload.phone is not None:
+        phone = payload.phone.strip()
+        normalized_phone = normalize_phone(phone)
+
+        with db.no_autoflush:
+            collision = db.scalar(
+                select(Customer).where(
+                    Customer.phone_normalized == normalized_phone,
+                    Customer.id != customer.id,
+                    Customer.is_active.is_(True),
+                )
+            )
+        if collision is not None:
+            survivor, source = sorted([customer, collision], key=lambda row: row.id)
+            survivor.phone = phone
+            survivor.phone_normalized = normalized_phone
+            merge_result = merge_customers(
+                db,
+                source=source,
+                target=survivor,
+                performed_by_staff_id=actor_id,
+            )
+            db.add(survivor)
+            db.flush()
+            return CustomerUpdateResult(
+                customer=survivor,
+                merge_happened=True,
+                merged_from_customer_id=merge_result.source_customer_id,
+            )
+
+        customer.phone = phone
+        customer.phone_normalized = normalized_phone
+
+    customer.updated_at = datetime.now(UTC)
+    db.add(customer)
+    db.flush()
+    return result
