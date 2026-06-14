@@ -39,6 +39,14 @@ export type AppointmentProcedure = {
   price: string
 }
 
+export type AppointmentCustomerSummary = {
+  id: number
+  full_name: string
+  phone: string
+  email?: string | null
+  notes?: string | null
+}
+
 export type Appointment = {
   id: number
   booking_reference: string
@@ -52,6 +60,9 @@ export type Appointment = {
   client_name: string
   client_phone: string
   client_email?: string | null
+  customer_summary?: AppointmentCustomerSummary | null
+  customer_tags: CustomerTag[]
+  customer_preferences: CustomerPreference[]
   start_time: string
   end_time: string
   total_duration_minutes: number
@@ -81,10 +92,32 @@ export type CustomerSummary = {
   phone: string
   email?: string | null
   notes?: string | null
+  tags: CustomerTag[]
+  preferences: CustomerPreference[]
   visit_count: number
   completed_spend: string
   latest_visit?: string | null
   upcoming_appointment?: string | null
+}
+
+export type CustomerTag = {
+  id: number
+  name: string
+  slug: string
+  scope: 'global' | 'branch'
+  branch_id?: number | null
+}
+
+export type CustomerPreference = {
+  definition_id: number
+  name: string
+  slug: string
+  scope: 'global' | 'branch'
+  branch_id?: number | null
+  value_type: 'text' | 'boolean' | 'single_select'
+  value_text?: string | null
+  value_bool?: boolean | null
+  value_option?: string | null
 }
 
 export type CustomerList = {

@@ -4,6 +4,7 @@ from decimal import Decimal
 from pydantic import EmailStr
 from sqlmodel import Field, SQLModel
 
+from app.schemas.customer import CustomerPreferenceOut, CustomerTagOut
 from app.models.enums import AppointmentStatus
 
 
@@ -61,6 +62,14 @@ class AppointmentProcedureOut(SQLModel):
     price: Decimal
 
 
+class AppointmentCustomerSummaryOut(SQLModel):
+    id: int
+    full_name: str
+    phone: str
+    email: str | None = None
+    notes: str | None = None
+
+
 class AppointmentOut(SQLModel):
     id: int
     booking_reference: str
@@ -74,6 +83,9 @@ class AppointmentOut(SQLModel):
     client_name: str
     client_phone: str
     client_email: str | None = None
+    customer_summary: AppointmentCustomerSummaryOut | None = None
+    customer_tags: list[CustomerTagOut] = Field(default_factory=list)
+    customer_preferences: list[CustomerPreferenceOut] = Field(default_factory=list)
     start_time: datetime
     end_time: datetime
     total_duration_minutes: int

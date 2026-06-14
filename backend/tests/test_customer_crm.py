@@ -544,3 +544,75 @@ def test_admin_customer_update_syncs_tags_and_preferences(client, db_session):
     assert [tag["slug"] for tag in body["tags"]] == ["vip"]
     assert body["preferences"][0]["slug"] == "quiet"
     assert body["preferences"][0]["value_bool"] is True
+
+
+def test_manager_appointments_include_customer_crm_block(client, db_session):
+    branch, master, proc = _seed_booking_base(db_session)
+    manager = _seed_manager(db_session, branch.id)
+    customer = Customer(full_name="An", phone="0904", phone_normalized="0904", email="an@example.com")
+    db_session.add(customer)
+    db_session.flush()
+
+    tag_def = CustomerTagDefinition(
+        name="VIP",
+        slug="vip",
+        scope=DefinitionScope.global_,
+        branch_id=None,
+        is_active=True,
+        created_by_staff_id=manager.id,
+    )
+    pref_def = CustomerPreferenceDefinition(
+        name="Quiet",
+        slug="quiet",
+        scope=DefinitionScope.branch,
+        branch_id=branch.id,
+        value_type=PreferenceValueType.boolean,
+        options_json=None,
+        is_active=True,
+        created_by_staff_id=manager.id,
+    )
+    db_session.add_all([tag_def, pref_def])
+    db_session.flush()
+    db_session.add(
+        CustomerTag(
+            customer_id=customer.id,
+            tag_definition_id=tag_def.id,
+            assigned_by_staff_id=manager.id,
+        )
+    )
+    db_session.add(
+        CustomerPreferenceValue(
+            customer_id=customer.id,
+            preference_definition_id=pref_def.id,
+            value_bool=True,
+            updated_by_staff_id=manager.id,
+        )
+    )
+    db_session.add(
+        Appointment(
+            branch_id=branch.id,
+            master_id=master.id,
+            procedure_id=proc.id,
+            customer_id=customer.id,
+            client_name="An",
+            client_phone="0904",
+            client_email="an@example.com",
+            start_time=datetime(2030, 1, 5, 10, 0, tzinfo=timezone.utc),
+            end_time=datetime(2030, 1, 5, 11, 0, tzinfo=timezone.utc),
+            price=Decimal("80.00"),
+        )
+    )
+    db_session.commit()
+
+    res = client.get(
+        "/api/manager/appointments?date=2030-01-05",
+        headers={"Authorization": f"Bearer {_token_for(manager)}"},
+    )
+
+    assert res.status_code == 200
+    row = res.json()[0]
+    assert row["customer_summary"]["id"] == customer.id
+    assert row["customer_summary"]["full_name"] == "An"
+    assert [tag["slug"] for tag in row["customer_tags"]] == ["vip"]
+    assert row["customer_preferences"][0]["slug"] == "quiet"
+    assert row["customer_preferences"][0]["value_bool"] is True

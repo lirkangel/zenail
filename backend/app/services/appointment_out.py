@@ -1,7 +1,10 @@
 from decimal import Decimal
 
+from sqlalchemy.orm import object_session
+
 from app.models.appointment import Appointment
-from app.schemas.public import AppointmentOut, AppointmentProcedureOut
+from app.schemas.public import AppointmentCustomerSummaryOut, AppointmentOut, AppointmentProcedureOut
+from app.services.customers import customer_preferences_out, customer_tags_out
 
 
 def appointment_to_out(appt: Appointment) -> AppointmentOut:
@@ -26,6 +29,30 @@ def appointment_to_out(appt: Appointment) -> AppointmentOut:
             )
         ]
 
+    customer_summary = None
+    customer_tags = []
+    customer_preferences = []
+    session = object_session(appt)
+    if appt.customer and session is not None:
+        customer_summary = AppointmentCustomerSummaryOut(
+            id=appt.customer.id,
+            full_name=appt.customer.full_name,
+            phone=appt.customer.phone,
+            email=appt.customer.email,
+            notes=appt.customer.notes,
+        )
+        branch_scope = appt.branch_id
+        customer_tags = customer_tags_out(
+            session,
+            customer_id=appt.customer.id,
+            branch_id=branch_scope,
+        )
+        customer_preferences = customer_preferences_out(
+            session,
+            customer_id=appt.customer.id,
+            branch_id=branch_scope,
+        )
+
     return AppointmentOut(
         id=appt.id,
         booking_reference=appt.booking_reference,
@@ -39,6 +66,9 @@ def appointment_to_out(appt: Appointment) -> AppointmentOut:
         client_name=appt.client_name,
         client_phone=appt.client_phone,
         client_email=appt.client_email,
+        customer_summary=customer_summary,
+        customer_tags=customer_tags,
+        customer_preferences=customer_preferences,
         start_time=appt.start_time,
         end_time=appt.end_time,
         total_duration_minutes=sum(p.duration_minutes for p in procedures),
