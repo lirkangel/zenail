@@ -36,6 +36,7 @@ export function StaffLayout() {
             { to: '/staff/dashboard', label: t('staff.tab.today') },
             { to: '/staff/appointments', label: t('staff.tab.clients') },
             { to: '/staff/customers', label: t('staff.tab.customers') },
+            { to: '/staff/customer-catalog', label: t('staff.tab.crm') },
             { to: '/staff/masters', label: t('staff.tab.masters') },
             { to: '/staff/requests', label: t('staff.tab.requests') },
             { to: '/staff/revenue', label: t('staff.tab.revenue') },
@@ -44,6 +45,7 @@ export function StaffLayout() {
         : [
             { to: '/staff/admin/branches', label: t('staff.tab.branches') },
             { to: '/staff/admin/customers', label: t('staff.tab.customers') },
+            { to: '/staff/admin/customer-catalog', label: t('staff.tab.crm') },
             { to: '/staff/admin/staff', label: t('staff.tab.staff') },
             { to: '/staff/admin/procedures', label: t('staff.tab.procedures') },
             { to: '/staff/admin/revenue', label: t('staff.tab.revenue') },

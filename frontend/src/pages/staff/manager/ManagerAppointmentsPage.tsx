@@ -5,6 +5,7 @@ import { apiFetch } from '../../../api/client'
 import type { Appointment, Master } from '../../../api/types'
 import { Button } from '../../../components/Button'
 import { Card } from '../../../components/Card'
+import { CustomerCrmSummary } from '../../../components/CustomerCrmSummary'
 import { Input } from '../../../components/Input'
 import { Page } from '../../../components/Page'
 import { useAuth } from '../../../state/useAuth'
@@ -122,6 +123,12 @@ function AppointmentRow({
         {(appt.procedures ?? []).map((p) => p.name).join(', ') ||
           t('common.procedureFallback', { id: appt.procedure_id })}
       </div>
+      <CustomerCrmSummary
+        compact
+        customer={appt.customer_summary}
+        preferences={appt.customer_preferences}
+        tags={appt.customer_tags}
+      />
       <div className="mt-1 flex items-center justify-between text-xs text-rose-900/70">
         <span>
           ${appt.price} · {appt.total_duration_minutes ?? t('common.emDash')} {t('common.minutes')}

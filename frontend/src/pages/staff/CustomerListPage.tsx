@@ -6,6 +6,7 @@ import type { CustomerList, CustomerSummary } from '../../api/types'
 import { Card } from '../../components/Card'
 import { Input } from '../../components/Input'
 import { Page } from '../../components/Page'
+import { CustomerCrmSummary } from '../../components/CustomerCrmSummary'
 import { useAuth } from '../../state/useAuth'
 import { useT } from '../../state/useT'
 
@@ -43,17 +44,17 @@ export function CustomerListPage() {
 
       <div className="space-y-3">
         {(q.data?.items ?? []).map((customer) => (
-          <CustomerCard key={customer.id} customer={customer} />
+          <CustomerCard key={customer.id} customer={customer} detailPath={me?.role === 'admin' ? `/staff/customers/${customer.id}` : `/staff/customers/${customer.id}`} />
         ))}
       </div>
     </Page>
   )
 }
 
-function CustomerCard({ customer }: { customer: CustomerSummary }) {
+function CustomerCard({ customer, detailPath }: { customer: CustomerSummary; detailPath: string }) {
   const t = useT()
   return (
-    <Link to={`/staff/customers/${customer.id}`} className="block">
+    <Link to={detailPath} className="block">
       <Card className="transition hover:border-rose-200 hover:shadow-studio">
         <div className="flex items-baseline justify-between gap-3">
           <div className="min-w-0 truncate text-sm font-semibold text-rose-950">{customer.full_name}</div>
@@ -75,9 +76,18 @@ function CustomerCard({ customer }: { customer: CustomerSummary }) {
             <div>{t('customers.latestVisit')}</div>
           </div>
         </div>
-        {customer.notes ? (
-          <div className="mt-2 line-clamp-2 text-xs text-rose-900/65">{customer.notes}</div>
-        ) : null}
+        <CustomerCrmSummary
+          compact
+          customer={{
+            id: customer.id,
+            full_name: customer.full_name,
+            phone: customer.phone,
+            email: customer.email,
+            notes: customer.notes,
+          }}
+          tags={customer.tags}
+          preferences={customer.preferences}
+        />
       </Card>
     </Link>
   )

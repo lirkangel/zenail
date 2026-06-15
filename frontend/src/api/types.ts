@@ -120,6 +120,26 @@ export type CustomerPreference = {
   value_option?: string | null
 }
 
+export type CustomerTagDefinition = {
+  id: number
+  name: string
+  slug: string
+  scope: 'global' | 'branch'
+  branch_id?: number | null
+  is_active: boolean
+}
+
+export type CustomerPreferenceDefinition = {
+  id: number
+  name: string
+  slug: string
+  scope: 'global' | 'branch'
+  branch_id?: number | null
+  value_type: 'text' | 'boolean' | 'single_select'
+  options_json?: string[] | null
+  is_active: boolean
+}
+
 export type CustomerList = {
   items: CustomerSummary[]
   total: number
@@ -140,5 +160,7 @@ export type CustomerAppointment = {
 }
 
 export type CustomerDetail = CustomerSummary & {
+  merge_happened?: boolean
+  merged_from_customer_id?: number | null
   appointments: CustomerAppointment[]
 }

@@ -11,6 +11,7 @@ import { BookTimePage } from './pages/guest/BookTimePage.tsx'
 import { StaffLoginPage } from './pages/staff/StaffLoginPage.tsx'
 import { StaffHomeRedirect } from './pages/staff/StaffHomeRedirect.tsx'
 import { StaffAccountPage } from './pages/staff/StaffAccountPage.tsx'
+import { CustomerCatalogPage } from './pages/staff/CustomerCatalogPage.tsx'
 import { CustomerDetailPage } from './pages/staff/CustomerDetailPage.tsx'
 import { CustomerListPage } from './pages/staff/CustomerListPage.tsx'
 import { MasterSchedulePage } from './pages/staff/master/MasterSchedulePage.tsx'
@@ -60,6 +61,7 @@ function App() {
           <Route path="/staff/appointments" element={<ManagerAppointmentsPage />} />
           <Route path="/staff/customers" element={<CustomerListPage />} />
           <Route path="/staff/customers/:id" element={<CustomerDetailPage />} />
+          <Route path="/staff/customer-catalog" element={<CustomerCatalogPage />} />
           <Route path="/staff/masters" element={<ManagerMastersPage />} />
           <Route path="/staff/requests" element={<ManagerRequestsPage />} />
           <Route path="/staff/revenue" element={<ManagerRevenuePage />} />
@@ -68,6 +70,7 @@ function App() {
         <Route element={<RequireRole roles={['admin']} />}>
           <Route path="/staff/admin/branches" element={<AdminBranchesPage />} />
           <Route path="/staff/admin/customers" element={<CustomerListPage />} />
+          <Route path="/staff/admin/customer-catalog" element={<CustomerCatalogPage />} />
           <Route path="/staff/admin/staff" element={<AdminStaffPage />} />
           <Route path="/staff/admin/procedures" element={<AdminProceduresPage />} />
           <Route path="/staff/admin/revenue" element={<AdminRevenuePage />} />
