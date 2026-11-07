@@ -20,7 +20,7 @@ def validate_branch_timezone(timezone_name: str) -> str:
     try:
         ZoneInfo(timezone_name)
     except ZoneInfoNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid branch timezone") from exc
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid branch timezone") from exc
     return timezone_name
 
 
@@ -42,13 +42,13 @@ def normalize_to_utc(value: datetime, *, field_name: str) -> datetime:
 
 def ensure_branch_day_not_past(branch: Branch, *, day: date) -> None:
     if day < now_in_branch(branch).date():
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot book a past date")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Cannot book a past date")
 
 
 def ensure_branch_start_not_past(branch: Branch, *, start_utc: datetime) -> None:
     local_start = start_utc.astimezone(get_branch_timezone(branch))
     if local_start < now_in_branch(branch):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot book a past date")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Cannot book a past date")
 
 
 def branch_day_bounds(branch: Branch, *, day: date) -> tuple[datetime, datetime]:

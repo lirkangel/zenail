@@ -11,7 +11,7 @@ FastAPI backend + React frontend + Postgres. Runs on the home-lab Talos k8s clus
   - `10.0.0.7:30500/zenail-backend:latest` — FastAPI/uvicorn (production: **no `--reload`**), `backend/Dockerfile.prod`
   - `10.0.0.7:30500/zenail-frontend:latest` — nginx serving the React SPA, proxies `/api/` → `backend:8000`; `frontend/Dockerfile.prod` + `frontend/nginx.prod.conf`
 - **DB:** postgres:16-alpine, PVC `zenail-db-data` 5Gi
-- **CI/CD:** push to `main` → GitLab runner on docker-host runs `/opt/zenail/scripts/k8s-deploy.sh` (builds both images → pushes to registry → `kubectl rollout restart`).
+- **CI/CD:** `git push gitlab main` → GitLab runner on docker-host runs `.gitlab-ci.yml` (builds both images → pushes `:latest` → runs `zenail-migrate` Job (`alembic upgrade head`) → `kubectl set image` + `rollout status`). Pushing only to `origin` (GitHub) runs tests, **does not deploy**. `/opt/zenail/scripts/k8s-deploy.sh` is a stale manual-recovery script, not the live path. Details: `K8S_DEPLOY.md`.
 
 ## Homelab infra it uses (full map: kronos-homelab repo CLAUDE.md)
 

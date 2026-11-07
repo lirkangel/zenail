@@ -182,24 +182,19 @@ uv run uvicorn app.main:app --reload
 - Frontend staff chờ xác thực `/api/me` trước khi render route bảo vệ
 - Manager không được chuyển thợ sang chi nhánh khác ngoài phạm vi cho phép
 
-## CI
+## CI / Deploy
 
-Workflow GitHub Actions hiện chạy:
-
-- Backend tests
-- Frontend lint
-- Frontend build
-
-File cấu hình:
-
-- `.github/workflows/ci.yml`
+- GitHub Actions (`.github/workflows/ci.yml`, remote `origin`): backend tests, frontend lint, frontend build. **Không deploy.**
+- GitLab CI (`.gitlab-ci.yml`, remote `gitlab`): build image production → push registry `10.0.0.7:30500` → chạy migration → rollout lên k8s namespace `zenail`.
+- Deploy: `git push gitlab main`. Chi tiết xem `K8S_DEPLOY.md`.
 
 ## Trạng thái hiện tại
 
 - Backend test đang pass
 - Frontend lint và build đang pass
 - CI GitHub Actions đang xanh
-- Frontend live trên `:3002` từng chạy theo kiểu Vite dev server, nên vẫn đáng cân nhắc harden deployment production
+- Production chạy trên Talos k8s: frontend nginx (build tĩnh) tại `http://10.0.0.7:30006` / `zenail.mathisterben.org`, backend uvicorn không `--reload`
+- `scripts/deploy-from-github.sh` và `scripts/deploy_server.py` là cơ chế deploy cũ (docker compose + webhook), đã ngừng dùng từ 2026-06-02
 
 ## File nên đọc đầu tiên
 

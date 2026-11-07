@@ -5,6 +5,7 @@ import { apiFetch } from '../../../api/client'
 import type { Appointment } from '../../../api/types'
 import { Button } from '../../../components/Button'
 import { Card } from '../../../components/Card'
+import { CustomerCrmSummary } from '../../../components/CustomerCrmSummary'
 import { Input } from '../../../components/Input'
 import { Page } from '../../../components/Page'
 import { useAuth } from '../../../state/useAuth'
@@ -79,6 +80,12 @@ export function MasterAppointmentPage() {
               <span className="text-rose-900/60">{t('master.appt.status')}:</span>{' '}
               {appointmentStatusLabel(t, apptQ.data.status)}
             </div>
+            <CustomerCrmSummary
+              compact
+              customer={apptQ.data.customer_summary}
+              preferences={apptQ.data.customer_preferences}
+              tags={apptQ.data.customer_tags}
+            />
           </div>
         ) : (
           <div className="text-xs text-rose-900/75">{t('master.appt.hint')}</div>
