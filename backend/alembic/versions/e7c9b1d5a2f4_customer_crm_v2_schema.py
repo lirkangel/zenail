@@ -212,3 +212,5 @@ def downgrade() -> None:
     op.drop_constraint("fk_customers_merged_into_customer_id", "customers", type_="foreignkey")
     op.drop_column("customers", "is_active")
     op.drop_column("customers", "merged_into_customer_id")
+    preference_value_type.drop(op.get_bind(), checkfirst=True)
+    definition_scope.drop(op.get_bind(), checkfirst=True)
