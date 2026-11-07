@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -29,9 +29,7 @@ class Settings(BaseSettings):
     # JSON map: {"reminder_24h.guest.zalo_zns": "<template_id>", ...}
     zalo_zns_template_ids_json: str = "{}"
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
 
 settings = Settings()

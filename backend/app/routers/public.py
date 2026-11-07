@@ -56,7 +56,7 @@ def _parse_procedure_ids(
         if value not in deduped:
             deduped.append(value)
     if not deduped:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="At least one procedure is required")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="At least one procedure is required")
     return deduped
 
 
@@ -147,7 +147,7 @@ def availability(
     try:
         day = date.fromisoformat(date_str)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid date")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid date")
     master = db.scalar(select(Staff).where(Staff.id == master_id, Staff.role == StaffRole.master))
     if not master or not master.branch_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Master not found")

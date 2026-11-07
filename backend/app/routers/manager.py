@@ -260,7 +260,7 @@ def decide_reschedule_request(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Request already decided")
 
     if payload.status not in (RescheduleRequestStatus.approved, RescheduleRequestStatus.rejected):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid status")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid status")
 
     if payload.status == RescheduleRequestStatus.approved:
         branch = db.get(Branch, appt.branch_id)
@@ -315,9 +315,9 @@ def branch_revenue(
         start = date.fromisoformat(from_date)
         end = date.fromisoformat(to_date)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid date")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid date")
     if end < start:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid range")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Invalid range")
 
     start_dt, _ = branch_day_bounds(branch, day=start)
     _, end_dt = branch_day_bounds(branch, day=end + timedelta(days=1))
