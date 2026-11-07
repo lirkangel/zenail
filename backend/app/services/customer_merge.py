@@ -98,7 +98,7 @@ def merge_customers(
             target_customer_id=target.id,
             performed_by_staff_id=performed_by_staff_id,
             summary_json={
-                "source_phone": source.phone_normalized,
+                "source_phone": source.phone,
                 "target_phone": target.phone_normalized,
             },
             created_at=now,

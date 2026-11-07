@@ -403,6 +403,53 @@ def test_admin_phone_edit_auto_merges_customer(client, db_session):
     assert len(merge_logs) == 1
 
 
+def test_admin_phone_edit_on_lower_id_customer_merges_without_unique_violation(client, db_session):
+    admin = _seed_admin(db_session)
+    keeper = Customer(full_name="Lan", phone="0901", phone_normalized="0901")
+    source = Customer(full_name="Minh", phone="0902", phone_normalized="0902")
+    db_session.add_all([keeper, source])
+    db_session.commit()
+
+    res = client.patch(
+        f"/api/admin/customers/{keeper.id}",
+        headers={"Authorization": f"Bearer {_token_for(admin)}"},
+        json={"phone": "0902"},
+    )
+
+    assert res.status_code == 200
+    body = res.json()
+    assert body["id"] == keeper.id
+    assert body["merge_happened"] is True
+    assert body["merged_from_customer_id"] == source.id
+    db_session.refresh(keeper)
+    db_session.refresh(source)
+    assert keeper.phone_normalized == "0902"
+    assert source.is_active is False
+    assert source.phone_normalized == f"merged:{source.id}"
+
+
+def test_booking_with_merged_customers_old_phone_creates_new_customer(client, db_session):
+    branch, master, proc = _seed_booking_base(db_session)
+    admin = _seed_admin(db_session)
+    keeper = Customer(full_name="Lan", phone="0901111111", phone_normalized="0901111111")
+    source = Customer(full_name="Minh", phone="0902222222", phone_normalized="0902222222")
+    db_session.add_all([keeper, source])
+    db_session.commit()
+
+    merge = client.patch(
+        f"/api/admin/customers/{source.id}",
+        headers={"Authorization": f"Bearer {_token_for(admin)}"},
+        json={"phone": "0901111111"},
+    )
+    assert merge.status_code == 200
+
+    res = _book(client, branch=branch, master=master, proc=proc, name="Minh", phone="0902222222")
+
+    assert res.status_code == 201, res.text
+    new_customer_id = res.json()["customer_id"]
+    assert new_customer_id not in (keeper.id, source.id)
+
+
 def test_admin_can_manage_global_tag_definition(client, db_session):
     admin = _seed_admin(db_session)
 

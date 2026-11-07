@@ -463,6 +463,12 @@ def apply_customer_update(
             )
         if collision is not None:
             survivor, source = sorted([customer, collision], key=lambda row: row.id)
+            # phone_normalized is UNIQUE: release the source's key before the
+            # survivor takes the new phone, and so a future booking on the
+            # source's old phone can create a fresh customer.
+            source.phone_normalized = f"merged:{source.id}"
+            db.add(source)
+            db.flush()
             survivor.phone = phone
             survivor.phone_normalized = normalized_phone
             merge_result = merge_customers(
