@@ -4,7 +4,7 @@ This repo is the Zenail application source. The Kubernetes manifest source of
 truth and the actual deploy mechanism live **outside this repo** — read this
 before assuming "push to GitHub" deploys anything.
 
-## How a deploy actually happens (current, as of 2026-06-08)
+## How a deploy actually happens (current, verified 2026-11-07)
 
 ```
 push to "gitlab" remote (main)
@@ -14,7 +14,8 @@ GitLab CI (.gitlab-ci.yml, runner "homelab" #53411225, shell executor on docker-
       │  builds backend (Dockerfile.prod) + frontend (Dockerfile.prod)
       │  pushes :latest to 10.0.0.7:30500
       │  runs `zenail-migrate` k8s Job (alembic upgrade head)
-      │  kubectl rollout restart deployment/backend deployment/frontend -n zenail
+      │  kubectl set image deployment/{backend,frontend} …:latest -n zenail
+      │  kubectl rollout status (120s timeout each)
       ▼
 Flux (image-automation, scans registry every 1m, digestReflectionPolicy: Always)
       │  detects new digest, commits pinned digest into manifest.yaml
