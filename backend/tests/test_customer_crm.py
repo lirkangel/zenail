@@ -663,3 +663,45 @@ def test_manager_appointments_include_customer_crm_block(client, db_session):
     assert [tag["slug"] for tag in row["customer_tags"]] == ["vip"]
     assert row["customer_preferences"][0]["slug"] == "quiet"
     assert row["customer_preferences"][0]["value_bool"] is True
+
+
+def test_public_appointment_responses_do_not_expose_crm_data(client, db_session):
+    branch, master, proc = _seed_booking_base(db_session)
+    admin = _seed_admin(db_session)
+    first = _book(client, branch=branch, master=master, proc=proc, phone="0903333333", hour=10)
+    assert first.status_code == 201
+    customer = db_session.get(Customer, first.json()["customer_id"])
+    customer.notes = "Internal: difficult client"
+    tag_def = CustomerTagDefinition(
+        name="Watchlist",
+        slug="watchlist",
+        scope=DefinitionScope.global_,
+        branch_id=None,
+        is_active=True,
+        created_by_staff_id=admin.id,
+    )
+    db_session.add_all([customer, tag_def])
+    db_session.flush()
+    db_session.add(CustomerTag(customer_id=customer.id, tag_definition_id=tag_def.id, assigned_by_staff_id=admin.id))
+    db_session.commit()
+
+    second = _book(client, branch=branch, master=master, proc=proc, phone="0903333333", hour=12)
+    lookup = client.get(f"/api/appointments/by-reference/{second.json()['booking_reference']}")
+
+    for res in (second, lookup):
+        assert res.status_code in (200, 201), res.text
+        body = res.json()
+        assert "customer_summary" not in body
+        assert "customer_tags" not in body
+        assert "customer_preferences" not in body
+        assert "difficult client" not in res.text
+        assert "watchlist" not in res.text.lower()
+
+    staff = client.get(
+        "/api/admin/appointments?date=2030-01-01",
+        headers={"Authorization": f"Bearer {_token_for(admin)}"},
+    )
+    assert staff.status_code == 200, staff.text
+    staff_appt = next(a for a in staff.json() if a["id"] == second.json()["id"])
+    assert staff_appt["customer_summary"]["notes"] == "Internal: difficult client"
+    assert [t["slug"] for t in staff_appt["customer_tags"]] == ["watchlist"]

@@ -83,11 +83,19 @@ class AppointmentOut(SQLModel):
     client_name: str
     client_phone: str
     client_email: str | None = None
-    customer_summary: AppointmentCustomerSummaryOut | None = None
-    customer_tags: list[CustomerTagOut] = Field(default_factory=list)
-    customer_preferences: list[CustomerPreferenceOut] = Field(default_factory=list)
     start_time: datetime
     end_time: datetime
     total_duration_minutes: int
     price: Decimal
     status: AppointmentStatus
+
+
+class StaffAppointmentOut(AppointmentOut):
+    """Appointment as seen by staff: adds internal CRM context.
+
+    Never use as a response model on public (guest) routes.
+    """
+
+    customer_summary: AppointmentCustomerSummaryOut | None = None
+    customer_tags: list[CustomerTagOut] = Field(default_factory=list)
+    customer_preferences: list[CustomerPreferenceOut] = Field(default_factory=list)

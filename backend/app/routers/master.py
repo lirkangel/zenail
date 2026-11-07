@@ -11,8 +11,8 @@ from app.models.enums import AppointmentStatus, RescheduleRequestStatus, StaffRo
 from app.models.reschedule_request import RescheduleRequest
 from app.models.staff import Staff
 from app.schemas.master import RescheduleRequestCreate, RescheduleRequestOut
-from app.schemas.public import AppointmentOut
-from app.services.appointment_out import appointment_to_out
+from app.schemas.public import StaffAppointmentOut
+from app.services.appointment_out import appointment_to_staff_out
 from app.services.booking import (
     appointment_duration_minutes,
     appointment_start_end,
@@ -24,12 +24,12 @@ from app.services.booking import (
 router = APIRouter(tags=["master"])
 
 
-@router.get("/master/appointments", response_model=list[AppointmentOut])
+@router.get("/master/appointments", response_model=list[StaffAppointmentOut])
 def my_appointments(
     date_str: str | None = Query(None, alias="date"),
     db: Session = Depends(get_db),
     staff: Staff = Depends(require_master),
-) -> list[AppointmentOut]:
+) -> list[StaffAppointmentOut]:
     if staff.role != StaffRole.master:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only masters can view this schedule")
 
@@ -50,15 +50,15 @@ def my_appointments(
         .order_by(Appointment.start_time)
     ).all()
 
-    return [appointment_to_out(a) for a in appts]
+    return [appointment_to_staff_out(a) for a in appts]
 
 
-@router.get("/master/appointments/{appointment_id}", response_model=AppointmentOut)
+@router.get("/master/appointments/{appointment_id}", response_model=StaffAppointmentOut)
 def my_appointment(
     appointment_id: int,
     db: Session = Depends(get_db),
     staff: Staff = Depends(require_master),
-) -> AppointmentOut:
+) -> StaffAppointmentOut:
     if staff.role != StaffRole.master:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only masters can view this schedule")
 
@@ -66,7 +66,7 @@ def my_appointment(
     if not appt or appt.master_id != staff.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
 
-    return appointment_to_out(appt)
+    return appointment_to_staff_out(appt)
 
 
 @router.post("/master/reschedule-requests", response_model=RescheduleRequestOut, status_code=status.HTTP_201_CREATED)

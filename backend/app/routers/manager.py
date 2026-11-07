@@ -37,9 +37,9 @@ from app.schemas.customer import (
     CustomerTagDefinitionUpdate,
     CustomerUpdate,
 )
-from app.schemas.public import AppointmentOut
+from app.schemas.public import StaffAppointmentOut
 from app.services import appointment_service
-from app.services.appointment_out import appointment_to_out
+from app.services.appointment_out import appointment_to_staff_out
 from app.services.booking import (
     appointment_duration_minutes,
     appointment_procedure_ids,
@@ -74,12 +74,12 @@ def _require_branch(staff: Staff) -> int:
     return staff.branch_id
 
 
-@router.get("/manager/appointments", response_model=list[AppointmentOut])
+@router.get("/manager/appointments", response_model=list[StaffAppointmentOut])
 def branch_appointments(
     date_str: str | None = Query(None, alias="date"),
     db: Session = Depends(get_db),
     staff: Staff = Depends(require_manager),
-) -> list[AppointmentOut]:
+) -> list[StaffAppointmentOut]:
     branch_id = _require_branch(staff)
     branch = db.get(Branch, branch_id)
     if not branch:
@@ -97,16 +97,16 @@ def branch_appointments(
         .order_by(Appointment.start_time)
     ).all()
 
-    return [appointment_to_out(a) for a in appts]
+    return [appointment_to_staff_out(a) for a in appts]
 
 
-@router.patch("/manager/appointments/{appointment_id}", response_model=AppointmentOut)
+@router.patch("/manager/appointments/{appointment_id}", response_model=StaffAppointmentOut)
 def update_appointment(
     appointment_id: int,
     payload: AppointmentUpdate,
     db: Session = Depends(get_db),
     staff: Staff = Depends(require_manager),
-) -> AppointmentOut:
+) -> StaffAppointmentOut:
     branch_id = _require_branch(staff)
     appt = db.get(Appointment, appointment_id)
     if not appt or appt.branch_id != branch_id:
@@ -123,7 +123,7 @@ def update_appointment(
     if did_cancel:
         db.commit()
         db.refresh(appt)
-        return appointment_to_out(appt)
+        return appointment_to_staff_out(appt)
 
     target_master_id = payload.master_id if payload.master_id is not None else appt.master_id
     target_start = payload.start_time if payload.start_time is not None else appt.start_time
@@ -178,7 +178,7 @@ def update_appointment(
     db.commit()
     db.refresh(appt)
 
-    return appointment_to_out(appt)
+    return appointment_to_staff_out(appt)
 
 
 @router.get("/manager/masters", response_model=list[ManagerMasterOut])
