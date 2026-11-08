@@ -2,7 +2,7 @@ import enum
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, text
 from sqlmodel import Field, SQLModel
 
 
@@ -23,11 +23,15 @@ class PreferenceValueType(str, enum.Enum):
 
 class Customer(SQLModel, table=True):
     __tablename__ = "customers"
+    __table_args__ = (
+        UniqueConstraint("phone_normalized", name="uq_customers_phone_normalized"),
+        Index("ix_customers_phone_normalized", "phone_normalized"),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     full_name: str = Field(sa_column=Column(String(200), nullable=False))
     phone: str = Field(sa_column=Column(String(50), nullable=False))
-    phone_normalized: str = Field(sa_column=Column(String(50), nullable=False, unique=True, index=True))
+    phone_normalized: str = Field(sa_column=Column(String(50), nullable=False))
     email: str | None = Field(default=None, sa_column=Column(String(200), nullable=True, index=True))
     notes: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
     merged_into_customer_id: int | None = Field(
@@ -47,6 +51,23 @@ class Customer(SQLModel, table=True):
 
 class CustomerTagDefinition(SQLModel, table=True):
     __tablename__ = "customer_tag_definitions"
+    __table_args__ = (
+        Index(
+            "uq_customer_tag_definitions_global_slug",
+            "slug",
+            unique=True,
+            postgresql_where=text("scope = 'global'"),
+            sqlite_where=text("scope = 'global'"),
+        ),
+        Index(
+            "uq_customer_tag_definitions_branch_slug",
+            "branch_id",
+            "slug",
+            unique=True,
+            postgresql_where=text("scope = 'branch'"),
+            sqlite_where=text("scope = 'branch'"),
+        ),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(sa_column=Column(String(120), nullable=False, index=True))
@@ -74,6 +95,23 @@ class CustomerTagDefinition(SQLModel, table=True):
 
 class CustomerPreferenceDefinition(SQLModel, table=True):
     __tablename__ = "customer_preference_definitions"
+    __table_args__ = (
+        Index(
+            "uq_customer_preference_definitions_global_slug",
+            "slug",
+            unique=True,
+            postgresql_where=text("scope = 'global'"),
+            sqlite_where=text("scope = 'global'"),
+        ),
+        Index(
+            "uq_customer_preference_definitions_branch_slug",
+            "branch_id",
+            "slug",
+            unique=True,
+            postgresql_where=text("scope = 'branch'"),
+            sqlite_where=text("scope = 'branch'"),
+        ),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(sa_column=Column(String(120), nullable=False, index=True))
@@ -162,10 +200,10 @@ class CustomerMergeLog(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     source_customer_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False)
+        sa_column=Column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     )
     target_customer_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False)
+        sa_column=Column(Integer, ForeignKey("customers.id", ondelete="CASCADE"), nullable=False, index=True)
     )
     performed_by_staff_id: int = Field(
         sa_column=Column(Integer, ForeignKey("staff.id", ondelete="RESTRICT"), nullable=False)

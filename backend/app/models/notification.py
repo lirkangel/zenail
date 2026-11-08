@@ -2,7 +2,7 @@ import enum
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Index, Integer, JSON, String, Text, text
 from sqlmodel import Field, SQLModel
 
 
@@ -33,6 +33,18 @@ class NotificationStatus(str, enum.Enum):
 
 class Notification(SQLModel, table=True):
     __tablename__ = "notifications"
+    __table_args__ = (
+        Index("ix_notifications_status_scheduled_at", "status", "scheduled_at"),
+        Index(
+            "uq_notifications_reminder_idem",
+            "appointment_id",
+            "recipient_role",
+            "channel",
+            unique=True,
+            postgresql_where=text("kind = 'reminder_24h' AND status = 'pending'"),
+            sqlite_where=text("kind = 'reminder_24h' AND status = 'pending'"),
+        ),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
 

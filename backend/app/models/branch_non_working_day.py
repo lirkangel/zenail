@@ -10,7 +10,7 @@ class BranchNonWorkingDay(SQLModel, table=True):
     __table_args__ = (UniqueConstraint("branch_id", "day", name="uq_branch_non_working_day"),)
 
     id: int | None = Field(default=None, primary_key=True)
-    branch_id: int = Field(sa_column=Column(Integer, ForeignKey("branches.id", ondelete="CASCADE"), index=True))
+    branch_id: int = Field(sa_column=Column(Integer, ForeignKey("branches.id", ondelete="CASCADE"), nullable=False, index=True))
     day: date = Field(sa_column=Column(Date, nullable=False, index=True))
     reason: str | None = Field(default=None, sa_column=Column(String(300)))
 
