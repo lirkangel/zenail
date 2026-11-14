@@ -21,6 +21,42 @@ jobs:
       - name: Run backend tests
         run: uv run python -m pytest tests -q
 
+  migrations:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: zenail
+          POSTGRES_PASSWORD: zenail
+          POSTGRES_DB: zenail
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U zenail"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://zenail:zenail@localhost:5432/zenail
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v7
+      - name: Install backend dependencies
+        run: uv sync --locked
+      - name: Apply migrations
+        run: uv run alembic upgrade head
+      - name: Models match migrations
+        run: uv run alembic check
+      - name: Downgrade and re-upgrade latest migration
+        run: uv run alembic downgrade -1 && uv run alembic upgrade head
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

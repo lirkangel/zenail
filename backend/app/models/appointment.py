@@ -3,7 +3,7 @@ from decimal import Decimal
 import secrets
 from typing import List, Optional
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Index, Integer, Numeric, String
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.models.enums import AppointmentStatus
@@ -16,12 +16,16 @@ def generate_booking_reference() -> str:
 
 class Appointment(SQLModel, table=True):
     __tablename__ = "appointments"
+    __table_args__ = (
+        Index("ix_appointments_branch_id_start_time", "branch_id", "start_time"),
+        Index("ix_appointments_master_id_start_time", "master_id", "start_time"),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
 
-    branch_id: int = Field(sa_column=Column(Integer, ForeignKey("branches.id", ondelete="RESTRICT"), index=True))
-    master_id: int = Field(sa_column=Column(Integer, ForeignKey("staff.id", ondelete="RESTRICT"), index=True))
-    procedure_id: int = Field(sa_column=Column(Integer, ForeignKey("procedures.id", ondelete="RESTRICT")))
+    branch_id: int = Field(sa_column=Column(Integer, ForeignKey("branches.id", ondelete="RESTRICT"), nullable=False))
+    master_id: int = Field(sa_column=Column(Integer, ForeignKey("staff.id", ondelete="RESTRICT"), nullable=False))
+    procedure_id: int = Field(sa_column=Column(Integer, ForeignKey("procedures.id", ondelete="RESTRICT"), nullable=False))
     customer_id: int | None = Field(
         default=None,
         sa_column=Column(Integer, ForeignKey("customers.id", ondelete="RESTRICT"), index=True),
@@ -38,7 +42,7 @@ class Appointment(SQLModel, table=True):
         sa_column=Column(String(32), nullable=False, unique=True, index=True),
     )
 
-    start_time: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False, index=True))
+    start_time: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
     end_time: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
 
     price: Decimal = Field(sa_column=Column(Numeric(10, 2), nullable=False))
